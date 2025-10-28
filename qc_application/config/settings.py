@@ -23,3 +23,5 @@ ARCGIS_PYTHON_PATH = r"C:\Program Files\ArcGIS\Pro\bin\Python\Scripts\propy.bat"
 
 # Interim survey path
 INTERIM_SURVEY_PATH = DEPENDENCIES_DIR / "SW_PROFILES_PHASE4_ALL" / "SW_PROFILES_PHASE4_ALL.shp"
+
+USER = "TD"

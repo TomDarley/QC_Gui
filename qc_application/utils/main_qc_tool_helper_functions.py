@@ -833,7 +833,7 @@ def check_metadata(input_text):
     """
 
 
-    directory_path = input_text.parent
+    directory_path = Path(input_text).parent
 
     try:
         # Check if the directory exists and is not empty
@@ -853,7 +853,7 @@ def check_metadata(input_text):
         logging.error(f"An error occurred while checking metadata: {e}")
         return "Issue"
 
-def check_survey_report(directory_path):
+def check_survey_report(input_text):
     """
     Checks a directory for the presence of a file containing "Report" in its name.
 
@@ -865,6 +865,10 @@ def check_survey_report(directory_path):
                - The first string is "Pass" if a report is found, otherwise "Issue".
                - The second string is "Auto Checked" if a report is found, otherwise "Missing".
     """
+
+    directory_path = Path(input_text).parent
+
+
     try:
         if not os.path.isdir(directory_path) or not os.listdir(directory_path):
             logging.warning(f"Directory not found or is empty: {directory_path}")
@@ -997,6 +1001,7 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "survey_received": survey_completion_date,
         "delivery_reference": "Where I get this",
         "gen_metadata": check_metadata(input_text),
+        "gen_metadata_c": "Auto Checked" if check_metadata(input_text) == "Pass" else "Missing",
         "gen_survey_report": check_survey_report(input_text)[0],
         "gen_survey_report_c": check_survey_report(input_text)[1],
         "gen_date_checked": gen_date_checked,
@@ -1585,7 +1590,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
     """
     # Shared metadata
     shared_name = survey_meta.get("gen_name", "Auto")
-    shared_date = survey_meta.get("gen_date_checked", "2025-06-27")
+    shared_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
     # Run data labeling check
     is_pco = True if region == "PCO" else False
@@ -1613,7 +1619,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "checks_pl_point_spacing", "checks_pl_point_spacing_c",
             "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
             "checks_pl_offline_variation", "checks_pl_offline_variation_c",
-            "qc_folder", "checks_name", "checks_pl_photos", "checks_pl_photos_c"
+            "qc_folder", "checks_pl_photos", "checks_pl_photos_c",
+            "checks_date_checked", "checks_name",
         ]
 
         values = [
@@ -1622,6 +1629,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         # Add shared fields
         values[columns.index("gen_date_checked")] = shared_date
         values[columns.index("gen_name")] = shared_name
+        values[columns.index("checks_date_checked")] = shared_date
+        values[columns.index("checks_name")] = shared_name
 
     else:  # Baseline survey
         columns = [
@@ -1636,7 +1645,7 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "data_profile_xyz_txt", "data_profile_xyz_txt_c", "checks_pl_point_spacing",
             "checks_pl_point_spacing_c", "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
             "checks_pl_offline_variation", "checks_pl_offline_variation_c", "qc_folder",
-            "bl_name", "bl_date_checked"
+            "bl_name", "bl_date_checked","checks_date_checked", "checks_name"
         ]
 
         values = [
@@ -1645,6 +1654,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         # Add shared fields
         values[columns.index("gen_name")] = shared_name
         values[columns.index("bl_date_checked")] = shared_date
+        values[columns.index("checks_date_checked")] = shared_date
+        values[columns.index("checks_name")] = shared_name
 
     # Validate column/value count
     if len(columns) != len(values):
