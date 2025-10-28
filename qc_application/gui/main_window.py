@@ -1,0 +1,66 @@
+import sys
+import logging
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget
+
+# Import your pages (update paths as you move them into gui/)
+from qc_application.gui.pages.home_page import HomePage
+from qc_application.gui.pages.topo_qc_page import QCPage
+from qc_application.gui.pages.topo_issue_reviewer_page import IssueReviewerPage
+from qc_application.gui.pages.topo_manual_qc_page  import ManualQCPage
+from qc_application.gui.pages.topo_batcher_page import BatcherPage
+from qc_application.gui.pages.topo_admin_page import TopoAdminPage
+from qc_application.gui.pages.topo_qc_menu_page import TopoQCMenuPage
+
+class MainWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("QC Tool")
+        self.setGeometry(100, 100, 600, 500)
+
+        self.stack = QStackedWidget()
+
+        # PAGE CONSTRUCTORS
+        self.home_page = HomePage(self.show_topo_qc_page, self.open_settings)
+        self.qc_app = QCPage(self.show_topo_qc_page)
+        self.topo_issue_reviewer_app = IssueReviewerPage(self.show_topo_qc_page)
+        self.manual_qc_tool_page = ManualQCPage(self.show_topo_qc_page)
+        self.batch_tool_page = BatcherPage(self.show_topo_qc_page)
+        self.topo_qc_admin_page = TopoAdminPage(self.show_topo_qc_page)
+
+        # TopoQCPage controls navigation
+        self.topo_qc_page = TopoQCMenuPage(
+            self.show_qc_script_page,
+            self.show_issue_reviewer_page,
+            self.show_home_page,
+            self.show_manual_qc_tool_page,
+            self.show_batch_tool_page,
+            self.open_settings,
+            self.show_topo_qc_admin_page
+        )
+
+        # Add widgets to stack
+        self.stack.addWidget(self.home_page)
+        self.stack.addWidget(self.topo_qc_page)
+        self.stack.addWidget(self.qc_app)
+        self.stack.addWidget(self.topo_issue_reviewer_app)
+        self.stack.addWidget(self.manual_qc_tool_page)
+        self.stack.addWidget(self.batch_tool_page)
+        self.stack.addWidget(self.topo_qc_admin_page)
+
+        self.stack.setCurrentWidget(self.home_page)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.stack)
+        self.setLayout(layout)
+
+    # Navigation methods
+    def show_home_page(self): self.stack.setCurrentWidget(self.home_page)
+    def show_topo_qc_page(self): self.stack.setCurrentWidget(self.topo_qc_page)
+    def show_qc_script_page(self): self.stack.setCurrentWidget(self.qc_app)
+    def show_issue_reviewer_page(self): self.stack.setCurrentWidget(self.topo_issue_reviewer_app)
+    def show_manual_qc_tool_page(self): self.stack.setCurrentWidget(self.manual_qc_tool_page)
+    def show_batch_tool_page(self): self.stack.setCurrentWidget(self.batch_tool_page)
+    def show_topo_qc_admin_page(self): self.stack.setCurrentWidget(self.topo_qc_admin_page)
+
+    def open_settings(self):
+        print("Opening settings...")

@@ -1,0 +1,4 @@
+PyQt5==5.15.9
+pandas==2.0.3
+sqlalchemy==2.0.20
+psycopg2-binary==2.9.7
