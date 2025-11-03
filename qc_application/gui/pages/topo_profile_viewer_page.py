@@ -27,14 +27,18 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from qc_application.config.settings import USER
+
+from qc_application.config.app_settings import AppSettings
+
+
 from qc_application.services.topo_calculate_cpa_service import CalculateCPATool
 from qc_application.utils.calculate_easting_northings import calculate_missing_northing_easting
 from qc_application.utils.profile_viewer_pure_functions import qc_profile, find_over_spacing
 from qc_application.utils.database_connection import establish_connection
 # --- Global Configuration and Stub Functions ---
 
-
+settings = AppSettings()
+USER = settings.get("user")
 #-Todo- if mp has changed then need to recalculate all cpa values for that profile for all existing data in the database
 #-Todo- Fixes that can be done in the profile viewer need to update the database qc tables
 #-Todo - Hook into existing GUI so the tool is called from the main topo qc tool
@@ -906,7 +910,7 @@ class DataHandler:
                 # Group by profile_id and add sequence within each group
                 all_new_mp_data['sequence'] = all_new_mp_data.groupby('profile_id').cumcount()
 
-            user_name = USER
+            user_name = settings.get("user")
 
             with conn.begin():
                 conn.execute(text("LOCK TABLE topo_qc.master_profiles IN EXCLUSIVE MODE"))
@@ -945,7 +949,7 @@ class DataHandler:
 
     def updateCpaDatabase(self, conn, file_paths):
         """Updates the CPA values in the database with new data from temp files."""
-        user_name = USER
+        user_name = settings.get("user")
 
         try:
             new_cpa_dfs = [pd.read_pickle(fp) for fp in file_paths]
@@ -998,7 +1002,7 @@ class DataHandler:
 
     def updateTopoDatabase(self, conn, file_paths):
         """Updates the topo_data table with new data from temp files and stores a history backup."""
-        user_name = USER
+        user_name = settings.get("user")
 
         try:
             # Load new topo data
@@ -1157,7 +1161,7 @@ class DataHandler:
 
     def undoMpDatabase(self, conn):
         """Undo the most recent Master Profile push for the current user."""
-        user_name = USER
+        user_name = settings.get("user")
 
         try:
             with conn.begin():
@@ -1236,7 +1240,7 @@ class DataHandler:
 
     def undoCpaDatabase(self, conn):
         """Undo the most recent CPA push for the current user."""
-        user_name = USER
+        user_name = settings.get("user")
 
         try:
             with conn.begin():
@@ -1317,7 +1321,7 @@ class DataHandler:
 
     def undoTopoDatabase(self, conn):
         """Undo the most recent topo_data push for the current user."""
-        user_name = USER
+        user_name = settings.get("user")
 
         try:
             with conn.begin():

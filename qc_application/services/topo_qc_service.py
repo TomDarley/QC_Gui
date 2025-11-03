@@ -2,7 +2,12 @@ import shutil
 from datetime import datetime
 from itertools import chain
 
-from qc_application.config.settings import ARCGIS_TEMPLATE_PATH
+#from qc_application.config.settings import ARCGIS_TEMPLATE_PATH
+from qc_application.config.app_settings import AppSettings
+
+settings = AppSettings()
+ARCGIS_TEMPLATE_PATH = settings.get("arcgis_template_path")
+
 
 try:
     import arcpy
@@ -220,7 +225,7 @@ class TopoQCTool:
 
             def create_aprx_file(aprx_path):
                 try:
-                    template_path = ARCGIS_TEMPLATE_PATH
+                    template_path = Path(ARCGIS_TEMPLATE_PATH)
                     shutil.copy(template_path, aprx_path)
                     logging.info(f"New ArcGIS project saved at {aprx_path}")
                     return arcpy.mp.ArcGISProject(aprx_path)

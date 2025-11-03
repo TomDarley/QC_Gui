@@ -3,10 +3,19 @@ import time
 import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
+from qc_application.config.app_settings import AppSettings
+settings = AppSettings()
+PASSWORD = settings.data["database"]["password"]
+HOST = settings.data["database"]["host"]
+PORT = settings.data["database"]["port"]
+DATABASE = settings.data["database"]["database"]
+USER = settings.data["database"]["user"]
+
+CONNECT_STRING  = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
 
 # Create one engine globally (thread-safe connection pool)
 ENGINE = create_engine(
-    "postgresql://postgres:Plymouth_C0@localhost:5432/swcm_qc_database",
+    CONNECT_STRING,
     pool_pre_ping=True,  # checks stale connections
     pool_size=5,
     max_overflow=10,

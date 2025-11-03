@@ -1,24 +1,30 @@
 import json
 from pathlib import Path
-
+import os
 
 class AppSettings:
     BASE_DIR = Path(__file__).resolve().parent.parent.parent
     DATA_DIR = BASE_DIR / 'data'
     DEPENDENCIES_DIR = BASE_DIR / 'dependencies'
+    ARCGIS_TEMPLATE_PATH = r"C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\Services\routingservices\data\Blank.aprx"
+
 
     DEFAULTS = {
         "database": {
             "host": "localhost",
             "port": "5432",
-            "database": "topo_qc",
+            "database": "swcm_qc_database_v2",
             "user": "postgres",
             "password": "Plymouth_C0"
         },
         "arcgis_python_path": r"C:\Program Files\ArcGIS\Pro\bin\Python\Scripts\propy.bat",
         "interim_survey_path": str(DEPENDENCIES_DIR / "SW_PROFILES_PHASE4_ALL" / "SW_PROFILES_PHASE4_ALL.shp"),
         "user": "TD",
-        "log_level": "INFO"
+        "log_level": "INFO",
+        "arcgis_template_path": r"C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\Services\routingservices\data\Blank.aprx"
+
+
+
     }
 
     def __init__(self, config_path=None):

@@ -3,9 +3,11 @@ import logging
 from PyQt5.QtWidgets import QApplication
 from qc_application.gui.main_window import MainWindow
 from qc_application.gui.styles import get_app_stylesheet
-from qc_application.config.settings import LOG_LEVEL
+#from qc_application.config.settings import LOG_LEVEL
+from qc_application.config.app_settings import AppSettings
 
-
+settings = AppSettings()
+LOG_LEVEL = settings.get("log_level")
 
 def main():
     # 1️⃣ Setup logging

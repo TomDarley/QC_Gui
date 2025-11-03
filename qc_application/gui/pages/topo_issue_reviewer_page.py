@@ -6,10 +6,14 @@ from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QTableWidget, QSizePolicy, QHBoxLayout, QPushButton, \
     QHeaderView, QComboBox, QTableWidgetItem, QMessageBox
 
-from qc_application.config.settings import USER
+#from qc_application.config.settings import USER
+from qc_application.config.app_settings import AppSettings
 from qc_application.utils.database_connection import establish_connection
 from collections import defaultdict
 from sqlalchemy import text
+
+settings = AppSettings()
+USER = settings.get("user")
 
 
 class IssueReviewerPage(QWidget):
