@@ -25,3 +25,6 @@ ARCGIS_PYTHON_PATH = r"C:\Program Files\ArcGIS\Pro\bin\Python\Scripts\propy.bat"
 INTERIM_SURVEY_PATH = DEPENDENCIES_DIR / "SW_PROFILES_PHASE4_ALL" / "SW_PROFILES_PHASE4_ALL.shp"
 
 USER = "TD"
+
+# This is the path to a blank ArcGIS Pro project template which comes with the ArcGIS Pro installation.
+ARCGIS_TEMPLATE_PATH = r"C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\Services\routingservices\data\Blank.aprx"

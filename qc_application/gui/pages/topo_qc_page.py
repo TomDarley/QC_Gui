@@ -74,7 +74,7 @@ class QCPage(QWidget):
 
         def extract_survey_info(file_path):
             path_str = str(Path(file_path))
-            match = re.search(r'([0-9a-zA-Z]+)_(\d{8})', path_str)
+            match = re.search(r'([0-9a-zA-Z\-]+)_(\d{8})', path_str)
             if match:
                 survey_unit = match.group(1)
                 date_str = match.group(2)
@@ -169,8 +169,13 @@ class QCPage(QWidget):
         self.thread.error.connect(self.on_script_error)
         self.thread.start()
 
-    def on_script_finished(self):
-        self.processing_label.setText("Done.")
+    def on_script_finished(self, success: bool):
+        if success:
+            self.processing_label.setText("QC completed successfully.")
+            QMessageBox.information(self, "Success", "QC completed successfully.")
+        else:
+            self.processing_label.setText("QC failed.")
+            QMessageBox.warning(self, "QC Failed", "QC script encountered errors.")
         self._script_running = False
         self.run_button.setEnabled(True)
 

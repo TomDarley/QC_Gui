@@ -303,8 +303,8 @@ class ManualQCPage(QWidget):
 
             if field in fields_that_use_enum:
                 combo = QComboBox()
-                combo.addItems(["", "Pass", "Issue", "Failed"])  # Enum options
-                combo.setCurrentText(value if value in ["Pass", "Issue", "Failed"] else "")
+                combo.addItems(["", "Pass", "Issue", "Rejected"])  # Enum options
+                combo.setCurrentText(value if value in ["Pass", "Issue", "Rejected"] else "")
                 layout.addRow(f"{field}:", combo)
                 field_widgets[field] = combo
 

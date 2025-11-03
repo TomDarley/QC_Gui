@@ -1588,6 +1588,9 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
     Returns:
         None
     """
+
+    push_successful = False
+
     # Shared metadata
     shared_name = survey_meta.get("gen_name", "Auto")
     shared_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1663,7 +1666,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         for i, (col, val) in enumerate(zip(columns, values)):
             print(f"{i + 1}. {col}: {val}")
         print(f"Columns: {len(columns)} | Values: {len(values)}")
-        return
+        push_successful = False
+        return push_successful
 
     # Insert into database
     try:
@@ -1680,10 +1684,14 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         conn.execute(insert_sql, params)
         conn.commit()
         print("✅ Data inserted successfully.")
+        push_successful= True
+        return push_successful
 
 
     except Exception as e:
         print(f"❌ Database insertion failed: {e}")
+        push_successful = False
+        return push_successful
 
 def generate_report(offline_points, lengths_over_spec, depth_checks, bad_feature_codes, workspace, survey_unit):
     """

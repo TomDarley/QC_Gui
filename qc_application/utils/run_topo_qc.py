@@ -1,21 +1,34 @@
 
-import logging
 import sys
-
+import logging
 from qc_application.services.topo_qc_service import TopoQCTool
-
-
-# Assuming your class is here
 
 def run_qc(input_text_files, interim_survey_lines):
     try:
         topo_tool = TopoQCTool(input_text_files, interim_survey_lines)
         logging.info("Running the QC script...")
-        topo_tool.run_topo_qc()
+        result = topo_tool.run_topo_qc()
+        logging.info(f"{result}")
+
+        if result:
+            logging.info("QC script completed successfully.")
+            return True
+        else:
+            logging.error("QC script encountered errors.")
+            return False
+
     except Exception as e:
         logging.error(f"Error running QC script: {str(e)}")
+        return False
 
 if __name__ == "__main__":
-    input_text_files = sys.argv[1]  # Get input text files from command line
-    interim_survey_lines = sys.argv[2]  # Get interim survey lines from command line
-    run_qc(input_text_files, interim_survey_lines)
+    try:
+        input_text_files = sys.argv[1]
+        interim_survey_lines = sys.argv[2]
+
+        success = run_qc(input_text_files, interim_survey_lines)
+        sys.exit(0 if success else 1)
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        sys.exit(1)
