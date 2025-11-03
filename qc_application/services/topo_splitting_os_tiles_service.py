@@ -61,7 +61,12 @@ class SplitOSTiles:
             print(f"Attempting to split {self.inAscii} for tile: {tile_name}")
             os_selection = arcpy.SelectLayerByAttribute_management(self.ostile_path, 'NEW_SELECTION',
                                                                    f"NAME = '{tile_name}'")
-            out_path = os.path.join(self.other_path, f"{tile_name}_0")
+            out_path = os.path.join(self.other_path, f"{tile_name}_00")
+            if arcpy.Exists(out_path):
+                print(f"Raster already exists: {out_path}. Deleting before split.")
+                arcpy.management.Delete(out_path)
+
+
             retry_count = 0
 
             while retry_count < 3:
@@ -156,3 +161,18 @@ class SplitOSTiles:
         except Exception as e:
             print(
                 f"Failed to delete the 'Delete_me' folder. Please remove it manually from your downloads folder. Error: {e}")
+
+#from pathlib import Path
+## Project root (two levels up from this file)
+#PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+#
+## Absolute path to shapefile
+#ostile_path = PROJECT_ROOT / "dependencies" / "OS_Tiles_All" / "OSTiles_Merged.shp"
+#ostile_path = str(ostile_path.resolve())  # ArcPy requires str
+#
+#split_tile = SplitOSTiles(r"C:\Users\darle\Desktop\Data\Survey_Topo\Phase4\TSW02\6d\6d6D2-4_ParSands\6d6D2-4_20220813tb",
+#                 ostile_path)
+#split_tile.get_os_tile_names()
+#split_tile.split_ascii_into_rasters()
+#split_tile.convert_rasters_to_ascii()
+#split_tile.clean_up_files()

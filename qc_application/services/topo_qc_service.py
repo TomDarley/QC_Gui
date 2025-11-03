@@ -170,9 +170,10 @@ class TopoQCTool:
                 ras1_path= None
                 aggregate_points_path = None
                 mask_path = None
+                hillshade_path = None
                 if bool_baseline_survey:
 
-                    xy_point_layer_path, ras1_path, aggregate_points_path, mask_path = run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_survey)
+                    xy_point_layer_path, ras1_path, aggregate_points_path, mask_path, hillshade_path = run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_survey)
 
                 push_result = push_results_to_database(survey_meta, input_text_file, region, bool_baseline_survey)
                 if not push_result:
@@ -194,7 +195,8 @@ class TopoQCTool:
                     xy_point_layer_path,
                     ras1_path,
                     aggregate_points_path,
-                    mask_path
+                    mask_path,
+                    hillshade_path
                 )
 
                 # Merge into the main dict

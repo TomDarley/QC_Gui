@@ -1298,7 +1298,7 @@ def create_xy_point_layer(workspace: str, tb_text_file: str) -> Optional[str]:
 
     file_name = os.path.basename(tb_text_file).replace(".txt", "")
     possible_z_fields = ["Elevation_OD", "Elevation", "elevation", "elevation_od"]
-
+    count = 1
     for z_field in possible_z_fields:
         out_feature_class = os.path.join(workspace, f"{file_name}_QC_Auto_{z_field}.shp")
         logging.info(f"Trying Z field: '{z_field}'")
@@ -1310,15 +1310,17 @@ def create_xy_point_layer(workspace: str, tb_text_file: str) -> Optional[str]:
                 x_field="Easting",
                 y_field="Northing",
                 z_field=z_field,
-                spatial_reference=arcpy.SpatialReference(27700) # OSGB 1936 British National Grid
+                coordinate_system=arcpy.SpatialReference(27700) # OSGB 1936 British National Grid
             )
             logging.info(f"Successfully created XY Point Layer with Z field '{z_field}': {out_feature_class}")
             return out_feature_class
 
         except arcpy.ExecuteError as e:
-            logging.warning(f"Attempt with Z field '{z_field}' failed due to an ArcPy error: {e}")
+            logging.warning(f"Attempt {count} with Z field '{z_field}' failed due to an ArcPy error: {e}")
+            count +=1
         except Exception as e:
             logging.error(f"An unexpected error occurred: {e}")
+            count += 1
 
     logging.error("Failed to create XY Point Layer with any Z field. Exiting.")
     return None
@@ -1428,16 +1430,58 @@ def extract_by_mask(workspace: str, ras1_path: str, extent_path: str) -> Optiona
 
     try:
         # Use named parameters for clarity and specify 'ExtractByMask' for clarity
-        arcpy.sa.ExtractByMask(
+        out_raster_obj = arcpy.sa.ExtractByMask(
             in_raster=ras1_path,
             in_mask_data=extent_path
         )
+        out_raster_obj.save(out_raster)
 
         logging.info(f"Successfully clipped raster to extent. Output: {out_raster}")
         return out_raster
 
     except arcpy.ExecuteError as e:
         logging.error(f"ArcPy execution error during Extract by Mask: {e}")
+        return None
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
+        return None
+
+def make_hillshade(workspace: str, input_raster: str) -> Optional[str]:
+    """
+    Generates a hillshade raster from an input elevation raster.
+
+    The function uses the Hillshade tool to create a shaded relief raster,
+    which can enhance the visualization of terrain features.
+
+    Args:
+        workspace (str): The path to the output geodatabase or folder.
+        input_raster (str): The full path to the input elevation raster.
+
+    Returns:
+        Optional[str]: The full path to the created hillshade raster if successful,
+                       otherwise None.
+    """
+    arcpy.env.overwriteOutput = True
+
+
+    hillshade_raster = os.path.join(workspace, "hillshade.tif")
+    logging.info(f"Attempting to create hillshade from raster: {input_raster}")
+
+    try:
+        hillshade_out = arcpy.sa.Hillshade(
+            in_raster=input_raster,
+            azimuth=315,
+            altitude=45,
+            model_shadows="NO_SHADOWS",
+            z_factor=1
+        )
+        hillshade_out.save(hillshade_raster)
+
+        logging.info(f"Hillshade raster created successfully: {hillshade_raster}")
+        return hillshade_raster
+
+    except arcpy.ExecuteError as e:
+        logging.error(f"ArcPy execution error during Hillshade creation: {e}")
         return None
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
@@ -1467,11 +1511,18 @@ def create_os_tiles(tb_text_file):
 
         from qc_application.services.topo_splitting_os_tiles_service import SplitOSTiles
 
+        # ArcPy requires absolute paths
         grandparent_dir = os.path.dirname(os.path.dirname(tb_text_file))
+        PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+        # Absolute path to shapefile
+        ostile_path = PROJECT_ROOT / "dependencies" / "OS_Tiles_All" / "OSTiles_Merged.shp"
+        ostile_path = str(ostile_path.resolve())  # ArcPy requires str
+        logging.error(f"Splitting OS Tiles: {grandparent_dir} - {ostile_path }")
 
         split_tile = SplitOSTiles(
             tb_folder_path=grandparent_dir,
-            ostile_path=r"dependencies/OS_Tiles_All/OSTiles_Merged.shp"
+            ostile_path=ostile_path
         )
         split_tile.get_os_tile_names()
         split_tile.split_ascii_into_rasters()
@@ -1567,8 +1618,10 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     ras1_path = natural_neighbour_interpolation(workspace, xy_point_layer_path)
     aggregate_points_path = aggregate_points_for_extent(workspace, xy_point_layer_path)
     mask_path = extract_by_mask(workspace, ras1_path, aggregate_points_path)
+    hillshade_path = make_hillshade(workspace, mask_path)
 
-    return xy_point_layer_path, ras1_path, aggregate_points_path, mask_path
+
+    return xy_point_layer_path, ras1_path, aggregate_points_path, mask_path,hillshade_path
 
 def push_results_to_database(survey_meta, input_text_file, region, bool_baseline_survey):
 
@@ -1739,7 +1792,8 @@ def log_paths_to_add_to_map(
     xy_point_layer_path=None,
     ras1_path=None,
     aggregate_points_path=None,
-    mask_path=None
+    mask_path=None,
+    hillshade_path=None
 ):
     """
     Logs paths to generated shapefiles and updates a dictionary for manual map review.
@@ -1785,6 +1839,6 @@ def log_paths_to_add_to_map(
                                                              offline_points_path,
                                                              buffer_file_path,
                                                              xy_point_layer_path, ras1_path,
-                                                             aggregate_points_path, mask_path
+                                                             aggregate_points_path, mask_path, hillshade_path
                                                              ]})
     return outputs_for_map
