@@ -40,8 +40,7 @@ class TopoQCMenuPage(QWidget):
         home_button = QPushButton("Home")
         home_button.clicked.connect(switch_to_home)
 
-        settings_button = QPushButton("Settings")
-        settings_button.clicked.connect(open_settings_callback)
+
 
         # Add widgets
         layout.addWidget(title)
@@ -51,7 +50,7 @@ class TopoQCMenuPage(QWidget):
         layout.addWidget(issue_button)
         layout.addWidget(admin_button)  # ← Add admin button
 
-        layout.addWidget(settings_button)
+
         layout.addWidget(home_button)
 
         self.setLayout(layout)

@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget
 
 # Import your pages (update paths as you move them into gui/)
 from qc_application.gui.pages.home_page import HomePage
+from qc_application.gui.pages.settings_page import SettingsDialog
 from qc_application.gui.pages.topo_qc_page import QCPage
 from qc_application.gui.pages.topo_issue_reviewer_page import IssueReviewerPage
 from qc_application.gui.pages.topo_manual_qc_page  import ManualQCPage
@@ -62,5 +63,8 @@ class MainWindow(QWidget):
     def show_batch_tool_page(self): self.stack.setCurrentWidget(self.batch_tool_page)
     def show_topo_qc_admin_page(self): self.stack.setCurrentWidget(self.topo_qc_admin_page)
 
+
+
     def open_settings(self):
-        print("Opening settings...")
+        dialog = SettingsDialog(self)
+        dialog.exec_()

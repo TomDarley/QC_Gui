@@ -83,6 +83,11 @@ class TopoAdminPage(QWidget):
         layout.addWidget(back_button)
         self.setLayout(layout)
 
+    def showEvent(self, event):
+        """Called automatically whenever the widget becomes visible."""
+        super().showEvent(event)
+        self.refresh_all_tabs()
+
     # --- Table creation ---
     def create_table_widget(self, table_name):
         container = QWidget()

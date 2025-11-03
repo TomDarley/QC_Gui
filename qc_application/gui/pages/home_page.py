@@ -1,6 +1,8 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QPushButton, QWidget
 
+from qc_application.gui.pages.settings_page import SettingsDialog
+
 
 class HomePage(QWidget):
     def __init__(self, switch_to_topo_qc, open_settings_callback):
@@ -27,3 +29,4 @@ class HomePage(QWidget):
         layout.addWidget(button)
         layout.addWidget(settings_button)  # Add settings button
         self.setLayout(layout)
+
