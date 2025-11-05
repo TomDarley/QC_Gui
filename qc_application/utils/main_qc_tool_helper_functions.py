@@ -723,6 +723,37 @@ def create_distance_buffer(points_file_path, buffer_file_path, spacing_unit_erro
 
     logging.info(f"Spacing buffer created at: {buffer_file_path}")
 
+
+def check_points_lie_on_correct_profile_lines(points_file_path, offline_line_buffer_path):
+    """
+    Checks only points that intersect a buffer.
+    If any intersecting point has reg_id != REGIONAL_N → return False.
+    Points that do not intersect are ignored entirely.
+
+    Returns:
+        bool: True if all intersecting points match correctly, False otherwise.
+    """
+
+
+    intersect_output = "in_memory/intersect_output"
+
+    # Intersect points with buffer polygons
+    arcpy.analysis.Intersect(
+        in_features=[points_file_path, offline_line_buffer_path],
+        out_feature_class=intersect_output,
+        join_attributes="ALL",
+        output_type="POINT"
+    )
+
+    # Compare intersect results
+    with arcpy.da.SearchCursor(intersect_output, ["reg_id", "REGIONAL_N"]) as cursor:
+        for reg_id, regional_n in cursor:
+            if str(reg_id).strip().replace('_','')  != str(regional_n).strip():
+                return False   # mismatch found → fail
+
+    return True  # all intersecting points match (or no intersections exist)
+
+
 # --TODO this is untested.
 def spacing_check(df, spacing_unit_error):
     """
@@ -970,7 +1001,7 @@ def define_survey_type(survey_completion_date_str, is_baseline_survey):
 def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_date,
                         survey_type, extracted_cell, bool_baseline_survey,
                         lengths_over_spec, depth_checks, offline_points, set_workspace,
-                        data_profile_xyz_c):
+                        data_profile_xyz_c,points_lie_on_correct_profile):
     """
     Extracts survey metadata from the input text file path and returns a dictionary.
 
@@ -1008,6 +1039,8 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "gen_name": gen_name,
         "data_profile_xyz_txt": os.path.basename(input_text),
         "data_profile_xyz_txt_c": data_profile_xyz_c,
+        "checks_pl_on_correct_profile_lines": "Pass" if points_lie_on_correct_profile else "Issue",
+        "checks_pl_on_correct_profile_lines_c": "All points lie on correct profile lines" if points_lie_on_correct_profile else "One or more points lie on incorrect profile lines",
         "checks_pl_point_spacing": get_overspacing_status(lengths_over_spec),
         "checks_pl_point_spacing_c": f"{len(lengths_over_spec)} over spacing found",
         "checks_pl_seaward_limit": get_made_depth_status(depth_checks),
@@ -1016,6 +1049,19 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "checks_pl_offline_variation_c": f"{len(offline_points)} found offline",
         "qc_folder": set_workspace,
     }
+
+    if os.path.exists(input_text):
+        survey_meta.update({
+            "bl_profile_data": "Pass",
+            "bl_profile_data_c": "Auto Checked",
+        })
+    else:
+        survey_meta.update({
+            "bl_profile_data": "Issue",
+            "bl_profile_data_c": f"Profile file missing: {input_text}",
+        })
+
+
 
     # The `if` condition is no longer needed since the dictionary is the same for both cases.
     # The `bool_baseline_survey` variable is already used to set the `survey_type` parameter
@@ -1563,13 +1609,23 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     survey_meta.update({
         "bl_other_data": "Issue",
         "bl_other_data_c": "Missing, could not be found",
+
+        "bl_xyz_data": "Issue",
+        "bl_xyz_data_c": "Missing, could not be found",
+        "bl_raster_data": "Issue",
+        "bl_raster_data_c": "Missing, could not be found",
+
+
+
+
         "data_baseline_xyz_txt": "Issue",
         "data_baseline_xyz_txt_c": "Missing, could not be found",
         "data_raster_grid": "Issue",
-        "data_raster_grid_c": "Found",
+        "data_raster_grid_c": "Missing",
         "bl_profile_photos": "Issue",
         "bl_profile_photos_c": "Missing, could not be found",
         "checks_cd_ascii_created_split": "false",
+
     })
 
     # Locate the 'other' folder
@@ -1585,13 +1641,18 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     if tb_text_file:
         survey_meta.update({
             "data_baseline_xyz_txt": os.path.basename(tb_text_file),
-            "data_baseline_xyz_txt_c": "Found"
+            "data_baseline_xyz_txt_c": "Found",
+            "bl_xyz_data": "Pass",
+            "bl_xyz_data_c": "Found"
+
         })
 
     if raster_asc_file:
         survey_meta.update({
             "data_raster_grid": os.path.basename(raster_asc_file),
-            "data_raster_grid_c": "Found"
+            "data_raster_grid_c": "Found",
+            "bl_raster_data": "Pass",
+            "bl_raster_data_c": "Found"
         })
 
     # OS-Tile creation if both files exist
@@ -1633,7 +1694,7 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
     relevant fields into the `topo_qc.qc_log` table.
 
     Args:
-        survey_meta (dict): Dictionary containing survey metadata and check results.
+        survey_meta (dict): Dictionary containing survey metadata and check results keys map to field names in DB.
         input_text_file (str): Path to the input text file used for labeling checks.
         region (str): Survey region identifier (e.g., "PCO").
         bool_baseline_survey (bool): Whether this is a baseline survey.
@@ -1672,6 +1733,7 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "gen_data_filename", "gen_data_filename_c", "gen_metadata", "gen_metadata_c",
             "gen_survey_report", "gen_survey_report_c", "gen_control_observations",
             "gen_date_checked", "gen_name", "data_profile_xyz_txt", "data_profile_xyz_txt_c",
+            "checks_pl_on_correct_profile_lines", "checks_pl_on_correct_profile_lines_c",
             "checks_pl_point_spacing", "checks_pl_point_spacing_c",
             "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
             "checks_pl_offline_variation", "checks_pl_offline_variation_c",
@@ -1682,6 +1744,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         values = [
             survey_meta.get(k) for k in columns[:len(columns)]
         ]
+
+
         # Add shared fields
         values[columns.index("gen_date_checked")] = shared_date
         values[columns.index("gen_name")] = shared_name
@@ -1696,13 +1760,17 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "gen_survey_report", "gen_survey_report_c", "gen_control_observations",
             "gen_date_checked", "gen_name", "data_baseline_xyz_txt", "data_baseline_xyz_txt_c",
             "checks_cd_ascii_created_split", "checks_cd_ascii_created_split_c",
-            "data_raster_grid", "data_raster_grid_c", "bl_xyz_data", "bl_raster_data",
+            "data_raster_grid", "data_raster_grid_c", "bl_xyz_data","bl_xyz_data_c", "bl_raster_data","bl_raster_data_c",
+            "bl_profile_data", "bl_profile_data_c",
             "bl_profile_photos", "bl_profile_photos_c", "bl_other_data", "bl_other_data_c",
-            "data_profile_xyz_txt", "data_profile_xyz_txt_c", "checks_pl_point_spacing",
+            "data_profile_xyz_txt", "data_profile_xyz_txt_c", "checks_pl_on_correct_profile_lines",
+            "checks_pl_on_correct_profile_lines_c","checks_pl_point_spacing",
             "checks_pl_point_spacing_c", "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
             "checks_pl_offline_variation", "checks_pl_offline_variation_c", "qc_folder",
             "bl_name", "bl_date_checked","checks_date_checked", "checks_name"
         ]
+
+
 
         values = [
             survey_meta.get(k) for k in columns
@@ -1712,6 +1780,8 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
         values[columns.index("bl_date_checked")] = shared_date
         values[columns.index("checks_date_checked")] = shared_date
         values[columns.index("checks_name")] = shared_name
+        values[columns.index("bl_name")] = shared_name
+
 
     # Validate column/value count
     if len(columns) != len(values):

@@ -7,7 +7,7 @@ from qc_application.config.app_settings import AppSettings
 
 settings = AppSettings()
 ARCGIS_TEMPLATE_PATH = settings.get("arcgis_template_path")
-
+ARCGIS_PRO_PATH = settings.get("arcgis_pro_path")
 
 try:
     import arcpy
@@ -26,7 +26,7 @@ from pathlib import Path
 from dependencies import mlsw_dict
 from dependencies.system_paths import OS_TILES_PATH
 from qc_application.utils.name_check_helper_functions import check_data_labeling
-from qc_application.utils.check_photos import check_photos
+
 import subprocess
 import tempfile
 from qc_application.utils.main_qc_tool_helper_functions import  *
@@ -155,10 +155,13 @@ class TopoQCTool:
 
                 survey_type = define_survey_type(survey_completion_date, bool_baseline_survey)
 
+                points_lie_on_correct_profile = check_points_lie_on_correct_profile_lines(points_file_path, offline_line_buffer_path)
+
+
                 survey_meta = extract_survey_meta(input_text, extracted_survey_unit, survey_completion_date,
                                         survey_type, extracted_cell, bool_baseline_survey,
                                         lengths_over_spec, depth_checks, offline_points, set_workspace,
-                                        data_profile_xyz_c)
+                                        data_profile_xyz_c, points_lie_on_correct_profile)
 
                 # Running photo checks this modifies the meta
                 survey_meta =  run_photo_checks(selected_interim_lines, survey_completion_date, input_text_file,
@@ -285,7 +288,7 @@ class TopoQCTool:
 
             def launch_arcgis_pro(aprx_path):
                 try:
-                    arcgis_pro_path = r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe"
+                    arcgis_pro_path = Path(ARCGIS_PRO_PATH)
                     if not os.path.exists(arcgis_pro_path):
                         logging.error(f"ArcGIS Pro executable not found at {arcgis_pro_path}")
                         return

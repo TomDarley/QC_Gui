@@ -7,6 +7,8 @@ class AppSettings:
     DATA_DIR = BASE_DIR / 'data'
     DEPENDENCIES_DIR = BASE_DIR / 'dependencies'
     ARCGIS_TEMPLATE_PATH = r"C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\Services\routingservices\data\Blank.aprx"
+    ARCGIS_PRO_PATH = r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe"
+
 
 
     DEFAULTS = {
@@ -21,7 +23,8 @@ class AppSettings:
         "interim_survey_path": str(DEPENDENCIES_DIR / "SW_PROFILES_PHASE4_ALL" / "SW_PROFILES_PHASE4_ALL.shp"),
         "user": "TD",
         "log_level": "INFO",
-        "arcgis_template_path": r"C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\Services\routingservices\data\Blank.aprx"
+        "arcgis_pro_path": str(ARCGIS_PRO_PATH),
+        "arcgis_template_path": str(ARCGIS_TEMPLATE_PATH)
 
 
 
