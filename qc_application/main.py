@@ -19,7 +19,7 @@ def main():
     # 2️⃣ Create the Qt application
     app = QApplication(sys.argv)
     app.setApplicationName("QC Application")
-    app.setOrganizationName("YourCompanyName")
+    app.setOrganizationName("South West Coastal Monitoring")
     # app.setWindowIcon(QIcon("resources/icons/app_icon.png"))
 
     # 3️⃣ Apply global stylesheet

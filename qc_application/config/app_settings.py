@@ -15,7 +15,7 @@ class AppSettings:
         "database": {
             "host": "localhost",
             "port": "5432",
-            "database": "swcm_qc_database_v2",
+            "database": "qc_database",
             "user": "postgres",
             "password": "Plymouth_C0"
         },

@@ -1001,7 +1001,7 @@ def define_survey_type(survey_completion_date_str, is_baseline_survey):
 def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_date,
                         survey_type, extracted_cell, bool_baseline_survey,
                         lengths_over_spec, depth_checks, offline_points, set_workspace,
-                        data_profile_xyz_c,points_lie_on_correct_profile):
+                        data_profile_xyz_c,points_lie_on_correct_profile,complete_high_level_planner ):
     """
     Extracts survey metadata from the input text file path and returns a dictionary.
 
@@ -1017,6 +1017,8 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         offline_points (pd.DataFrame): DataFrame of points found offline.
         set_workspace (str): The path to the QC folder.
         data_profile_xyz_c (str): Check status of the data profile file.
+        points_lie_on_correct_profile (bool): Flag indicating if points lie on correct profile lines.
+        complete_high_level_planner (bool): Flag indicating if the high-level planner is complete.
 
     Returns:
         dict: A dictionary containing the extracted and generated metadata.
@@ -1035,6 +1037,9 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "gen_metadata_c": "Auto Checked" if check_metadata(input_text) == "Pass" else "Missing",
         "gen_survey_report": check_survey_report(input_text)[0],
         "gen_survey_report_c": check_survey_report(input_text)[1],
+        "gen_added_to_high_level_planner": "Pass" if complete_high_level_planner else "Issue",
+        "gen_added_to_high_level_planner_c": "Survey Added to High-Level Planner" if complete_high_level_planner else "Survey not added to High-Level Planner",
+
         "gen_date_checked": gen_date_checked,
         "gen_name": gen_name,
         "data_profile_xyz_txt": os.path.basename(input_text),
@@ -1048,6 +1053,8 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "checks_pl_offline_variation": get_offline_points_status(offline_points),
         "checks_pl_offline_variation_c": f"{len(offline_points)} found offline",
         "qc_folder": set_workspace,
+
+
     }
 
     if os.path.exists(input_text):
@@ -1684,6 +1691,91 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
 
     return xy_point_layer_path, ras1_path, aggregate_points_path, mask_path,hillshade_path
 
+
+
+
+def update_high_level_planner(survey_unit, survey_type, survey_completion_date=None, mode="Fill"):
+    push_state = False
+
+    if not survey_unit or not survey_type:
+        logging.error("Survey unit and survey type must be provided.")
+        return push_state
+    # date format: 20250115
+
+    extracted_year  = survey_completion_date[:4] if survey_completion_date else None
+    logging.info(f"Extracted year from completion date: {extracted_year}")
+
+
+
+    try:
+        conn = establish_connection()  # SQLAlchemy connection
+
+        # Determine values based on mode
+        if mode == "Fill":
+            date_iso = datetime.strptime(survey_completion_date, '%Y%m%d').date()  # convert to date object
+            date_iso_str = date_iso.strftime('%Y-%m-%d')  # format as YYYY-MM-DD string
+            completion = date_iso_str
+            comment = "Auto"
+        else:
+            completion = ''
+            comment = ""
+
+        logging.info(f"Completion date to set: {completion}, Comment to set: {comment}")
+
+        get_year_ranges = text("""
+            SELECT DISTINCT year_range
+            FROM topo_qc.high_level_planner""")
+
+        result = conn.execute(get_year_ranges).mappings()
+        year_ranges = [row['year_range'] for row in result.fetchall()]
+
+        target_year_range = None
+
+        for year_range in year_ranges:
+
+            end_year = str(year_range.split('-')[1])
+
+            if extracted_year in end_year:
+                target_year_range = year_range
+                break
+
+        if not target_year_range:
+            logging.error(f"No matching year range found for year: {extracted_year}")
+            return push_state
+
+        logging.info(f"Extracted year range from completion date: {target_year_range}")
+
+        # Build parameterized update query
+        update_sql = text("""
+            UPDATE topo_qc.high_level_planner
+            SET completion = :completion, comment = :comment
+            WHERE survey_unit = :survey_unit AND phase = :survey_type AND year_range = :year_range
+        """)
+
+        # Bind parameters
+        params = {
+            "completion": completion,
+            "comment": comment,
+            "survey_unit": survey_unit,
+            "survey_type": survey_type,
+            "year_range": target_year_range
+        }
+
+        conn.execute(update_sql, params)
+        conn.commit()
+        logging.info(f"High-level planner updated for survey unit: {survey_unit}")
+        push_state = True
+
+    except Exception as e:
+        logging.error(f"An error occurred while updating the high-level planner: {e}")
+
+    finally:
+        conn.close()
+
+    return push_state
+
+
+
 def push_results_to_database(survey_meta, input_text_file, region, bool_baseline_survey):
 
     from qc_application.utils.name_check_helper_functions import check_data_labeling
@@ -1732,7 +1824,7 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "delivery_reference", "gen_data_labelling", "gen_data_labelling_c",
             "gen_data_filename", "gen_data_filename_c", "gen_metadata", "gen_metadata_c",
             "gen_survey_report", "gen_survey_report_c", "gen_control_observations",
-            "gen_date_checked", "gen_name", "data_profile_xyz_txt", "data_profile_xyz_txt_c",
+            "gen_date_checked","gen_added_to_high_level_planner","gen_added_to_high_level_planner_c", "gen_name", "data_profile_xyz_txt", "data_profile_xyz_txt_c",
             "checks_pl_on_correct_profile_lines", "checks_pl_on_correct_profile_lines_c",
             "checks_pl_point_spacing", "checks_pl_point_spacing_c",
             "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
@@ -1757,7 +1849,7 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
             "survey_unit", "survey_type", "completion_date", "survey_received",
             "delivery_reference", "gen_data_labelling", "gen_data_labelling_c",
             "gen_data_filename", "gen_data_filename_c", "gen_metadata", "gen_metadata_c",
-            "gen_survey_report", "gen_survey_report_c", "gen_control_observations",
+            "gen_survey_report", "gen_survey_report_c", "gen_control_observations","gen_added_to_high_level_planner","gen_added_to_high_level_planner_c",
             "gen_date_checked", "gen_name", "data_baseline_xyz_txt", "data_baseline_xyz_txt_c",
             "checks_cd_ascii_created_split", "checks_cd_ascii_created_split_c",
             "data_raster_grid", "data_raster_grid_c", "bl_xyz_data","bl_xyz_data_c", "bl_raster_data","bl_raster_data_c",

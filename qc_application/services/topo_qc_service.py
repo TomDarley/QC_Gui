@@ -91,6 +91,8 @@ class TopoQCTool:
                 bool_baseline_survey =  is_baseline_survey(input_text)
                 logging.info(f"Baseline Survey set to:{bool_baseline_survey}")
 
+
+
                 extracted_survey_unit = get_input_survey_unit(input_text, survey_profile_lines_shp)
                 if not extracted_survey_unit:
                     logging.warning(f"Extracted Survey Unit could not be set from input text file path: {input_text}. Skipping this file.")
@@ -105,6 +107,22 @@ class TopoQCTool:
 
                 survey_completion_date = get_survey_completion_date(input_text)
                 arcpy.AddMessage("Survey Date Selected " + survey_completion_date)
+
+                survey_type = define_survey_type(survey_completion_date, bool_baseline_survey)
+
+                # We fill in the high level planner here, if an error occurs the code will set the qc field to issue
+                long_survey_unit = extracted_cell+extracted_survey_unit
+                complete_high_level_planner = update_high_level_planner(survey_type = survey_type,
+                                                                        survey_unit=long_survey_unit,
+                                                                        survey_completion_date=survey_completion_date,
+                                                                        mode ="Fill"
+                                                                        )
+                if not complete_high_level_planner:
+                    logging.error(f"High level planner could not be completed for {input_text}. Skipping this file.")
+                    break
+
+
+
 
 
                 set_workspace  = get_qc_workspace(input_text)
@@ -153,7 +171,7 @@ class TopoQCTool:
 
                 depth_checks  =check_made_depth(standardised_df, MLSW)
 
-                survey_type = define_survey_type(survey_completion_date, bool_baseline_survey)
+
 
                 points_lie_on_correct_profile = check_points_lie_on_correct_profile_lines(points_file_path, offline_line_buffer_path)
 
@@ -161,7 +179,7 @@ class TopoQCTool:
                 survey_meta = extract_survey_meta(input_text, extracted_survey_unit, survey_completion_date,
                                         survey_type, extracted_cell, bool_baseline_survey,
                                         lengths_over_spec, depth_checks, offline_points, set_workspace,
-                                        data_profile_xyz_c, points_lie_on_correct_profile)
+                                        data_profile_xyz_c, points_lie_on_correct_profile, complete_high_level_planner)
 
                 # Running photo checks this modifies the meta
                 survey_meta =  run_photo_checks(selected_interim_lines, survey_completion_date, input_text_file,
@@ -214,6 +232,16 @@ class TopoQCTool:
         except Exception as e:
             self.qc_successful = False
             logging.error(f"An error occurred during the QC process: {str(e)}")
+
+            try:
+                logging.info("Attempting to revert high level planner changes...")
+
+
+            except Exception as e:
+                logging.error(f"Failed to revert high level planner changes: {str(e)}")
+
+
+
             return  self.qc_successful
 
         def displayFindingsOnMap(outputs_for_map):

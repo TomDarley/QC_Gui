@@ -42,7 +42,8 @@ class TopoAdminPage(QWidget):
             "Issue History": "topo_qc.topo_issue_history",
             "Batch Log": "topo_qc.batch_log",
             "Batch Ready": "topo_qc.topo_batch_ready",
-            "Rejected Topo Surveys": "topo_qc.rejected_topo_surveys"
+            "Rejected Topo Surveys": "topo_qc.rejected_topo_surveys",
+            "High Level Planner": "topo_qc.v_high_level_planner"
         }
 
         layout = QVBoxLayout()
@@ -125,6 +126,7 @@ class TopoAdminPage(QWidget):
             qc_folder_col_index = None
             if "qc_folder" in columns:
                 qc_folder_col_index = columns.index("qc_folder")
+
             if table_name.endswith("rejected_topo_surveys"):
                 try:
                     self.survey_id_col_index = columns.index("survey_id")
@@ -294,6 +296,10 @@ class TopoAdminPage(QWidget):
                 except ValueError:
                     pass  # Column may not exist
 
+                overdue_col_index = None
+                if "overdue" in columns:
+                    overdue_col_index = columns.index("overdue")
+
                 # Populate rows
                 for r_idx, row in enumerate(rows):
                     # Determine if the entire row should be highlighted
@@ -301,6 +307,11 @@ class TopoAdminPage(QWidget):
                     if qc_folder_col_index is not None:
                         qc_value = str(row[qc_folder_col_index]).lower()
                         if "rejected" in qc_value:
+                            highlight_row_red = True
+
+                    if overdue_col_index is not None:
+                        overdue_value = str(row[overdue_col_index]).lower()
+                        if overdue_value == 'true':
                             highlight_row_red = True
 
                     for c_idx, value in enumerate(row):
