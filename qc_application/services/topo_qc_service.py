@@ -121,10 +121,6 @@ class TopoQCTool:
                     logging.error(f"High level planner could not be completed for {input_text}. Skipping this file.")
                     break
 
-
-
-
-
                 set_workspace  = get_qc_workspace(input_text)
                 if not set_workspace:
                     logging.error(f"Workspace environment could not be set. Skipping {input_text}.")

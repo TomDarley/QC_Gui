@@ -4,6 +4,9 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, List
 import psycopg2
+from sqlalchemy import text
+
+from qc_application.utils.database_connection import establish_connection
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -31,29 +34,35 @@ def extract_date(filename: str) -> Optional[str]:
 
 def check_valid_survey_unit(survey_unit: str) -> bool:
     logger.info(f"Checking Survey Unit {survey_unit}")
+
     try:
-        conn = psycopg2.connect(
-            dbname="SWCM_QC_Database",
-            user="postgres",
-            password="Plymouth_C0",
-            host="localhost",
-            port="5432"
-        )
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT survey_unit FROM topo_qc.survey_units WHERE survey_unit = %s;",
-                    (survey_unit,)
-                )
-                result = cur.fetchone()
-        valid = bool(result)
+        conn = establish_connection()  # SQLAlchemy-style engine connection
+
+        query = text("""
+            SELECT survey_unit 
+            FROM topo_qc.survey_units 
+            WHERE survey_unit = :survey_unit
+        """)
+
+        result = conn.execute(query, {"survey_unit": survey_unit}).mappings().fetchone()
+
+        valid = result is not None
         survey_naming_check_results["Survey_Unit_Valid"] = [valid]
-        logger.info(f"Survey unit exists: {result[0] if valid else 'No'}")
+
+        if valid:
+            logger.info(f"Survey unit exists: {result['survey_unit']}")
+        else:
+            logger.info("Survey unit does not exist.")
+
         return valid
+
     except Exception as e:
         logger.error(f"Database query failed: {e}")
         survey_naming_check_results["Survey_Unit_Valid"] = [False]
         return False
+
+    finally:
+        conn.close
 
 
 def check_valid_date(date_str: str) -> bool:

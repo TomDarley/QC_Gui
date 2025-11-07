@@ -1692,8 +1692,6 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     return xy_point_layer_path, ras1_path, aggregate_points_path, mask_path,hillshade_path
 
 
-
-
 def update_high_level_planner(survey_unit, survey_type, survey_completion_date=None, mode="Fill"):
     push_state = False
 
@@ -1773,7 +1771,6 @@ def update_high_level_planner(survey_unit, survey_type, survey_completion_date=N
         conn.close()
 
     return push_state
-
 
 
 def push_results_to_database(survey_meta, input_text_file, region, bool_baseline_survey):
