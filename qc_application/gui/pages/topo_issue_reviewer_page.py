@@ -79,7 +79,7 @@ class IssueReviewerPage(QWidget):
             result = self.conn.execute(text(f"SELECT * FROM {self.table_name}"))
             rows = result.fetchall()
             columns = list(result.keys())
-            editable_fields = {"check_comment", "checker", "check_date", "issue_status"}
+            #editable_fields = {"check_comment", "checker", "check_date", "issue_status"}
 
             self.table_widget.setColumnCount(len(columns))
             self.table_widget.setRowCount(len(rows))
@@ -110,7 +110,11 @@ class IssueReviewerPage(QWidget):
 
                     elif column_name == "issue_status":
                         combo = QComboBox()
-                        combo.addItems(["PendingReview", "Omitted", "Rejected"])
+
+
+                        # Note rejection is not set here this is done in the admin page.
+                        combo.addItems(["PendingReview", "Omitted", "Failed"])
+
                         combo.setCurrentText(str(value) if value is not None else "PendingReview")
                         # Set blue background
                         combo.setStyleSheet("background-color: rgb(255, 255, 204);")

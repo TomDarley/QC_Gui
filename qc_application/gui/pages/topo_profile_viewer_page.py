@@ -132,6 +132,8 @@ class DataHandler:
     def __init__(self, new_survey_topo_data, survey_unit):
         logging.info(f"Initializing DataHandler for unit: {survey_unit}")
 
+        logging.info(f"Checking if Survey Unit '{survey_unit}' has already been pushed to the database.")
+
         # Data Loading
         try:
             if isinstance(new_survey_topo_data, str):
@@ -335,6 +337,59 @@ class DataHandler:
             logging.info(f"No existing temporary files found")
         return files_exist
 
+    def has_survey_been_marked_as_failed(self) -> bool:
+        """
+        Returns True if any 'check_status_enum' or 'issue_status_enum' column
+        in topo_qc.qc_log has the value 'Failed' for this survey_unit and date.
+        """
+        conn = establish_connection()
+        if conn is None:
+            logging.error("Database connection failed in has_survey_been_marked_as_failed.")
+            return False
+
+        survey_unit = self.survey_unit
+        date = self.date
+
+        # Fetch all enum columns
+        cols_query = text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'topo_qc'
+              AND table_name = 'qc_log'
+              AND udt_name IN ('check_status_enum', 'issue_status_enum')
+        """)
+        cols_result = conn.execute(cols_query).fetchall()
+        enum_columns = [r[0] for r in cols_result]
+
+        if not enum_columns:
+            logging.warning("No enum columns found in topo_qc.qc_log.")
+            return False
+
+        # Build dynamic WHERE clause to check any column = 'Failed'
+        conditions = " OR ".join([f"{col} IN ('Failed', 'Rejected')" for col in enum_columns])
+
+
+        query = text(f"""
+            SELECT 1
+            FROM topo_qc.qc_log
+            WHERE survey_unit = :survey_unit
+              AND completion_date = :date
+              AND ({conditions})
+            LIMIT 1
+        """)
+
+        result = conn.execute(query, {"survey_unit": survey_unit, "date": date}).fetchone()
+
+        return bool(result)
+
+
+
+
+
+
+
+
+
     def check_if_database_push_completed(self):
         """
         Checks if the current survey (survey_unit + date) has already been pushed
@@ -348,6 +403,8 @@ class DataHandler:
 
         survey_unit = self.survey_unit
         date = self.date
+
+
 
 
         try:
@@ -818,7 +875,7 @@ class DataHandler:
 
                 update_query = text(f"""
                     UPDATE topo_qc.qc_log
-                    SET {db_field} = 'Rejected',
+                    SET {db_field} = 'Failed',
                         {db_field_c} = :reason
                     WHERE survey_unit = :survey_unit
                     AND completion_date = :date;
@@ -844,18 +901,18 @@ class DataHandler:
 
             QMessageBox.information(
                 None,
-                "Survey Rejected",
-                "Survey successfully marked as rejected in the database.",
+                "Survey Fields Marked as Failed",
+                "Survey successfully set with failures in the database. Admin will be notified.",
                 QMessageBox.Ok
             )
-            logging.info("Survey marked as rejected successfully.")
+            logging.info("Survey marked as Failed successfully.")
 
         except Exception as e:
-            logging.error(f"Failed to mark survey as rejected: {e}")
+            logging.error(f"Failed to mark survey as failed: {e}")
             QMessageBox.critical(
                 None,
                 "Database Error",
-                f"Could not mark survey as rejected.\nError: {e}",
+                f"Could not mark survey as failed.\nError: {e}",
                 QMessageBox.Ok
             )
 
@@ -891,6 +948,8 @@ class DataHandler:
     # -----------------------------
     #   Master Profile Updates
     # -----------------------------
+
+    #TODO - Add method that undoes the last QC log changes
 
     def updateMpDatabase(self, conn, file_paths):
         """Updates the master profiles in the database with new data from temp files."""
@@ -1423,7 +1482,7 @@ class DataHandler:
 
                 history_result= conn.execute(
                     text("""
-                        SELECT * FROM topo_qc.topo_issue_history WHERE survey_id = :survey_id AND new_issue_status = 'Rejected'
+                        SELECT * FROM topo_qc.topo_issue_history WHERE survey_id = :survey_id AND new_issue_status = 'Failed'
                         ORDER BY updated_at DESC LIMIT 1
                     """),
                     {"survey_id": survey_id}
@@ -1602,12 +1661,31 @@ class ProfileQCApp(QWidget):
 
     def __init__(self, new_survey_topo_data, survey_unit,survey_type ,parent =None):
         super().__init__(parent)
+
         self.dialog = parent
 
         logging.info("Initializing ProfileQCApp GUI.")
         self.setWindowTitle(f"Profile QC Tool - {survey_unit}")
         self.data_handler = DataHandler(new_survey_topo_data, survey_unit)
         self.survey_type = survey_type
+
+        if self.data_handler.has_survey_been_marked_as_failed():
+            # Show warning
+            QMessageBox.critical(
+                self,
+                "Survey Already Failed",
+                "This survey has already been marked as Failed. The QC session will now exit."
+            )
+            logging.warning("Survey marked as Failed. Exiting QC session.")
+
+            # Close properly
+            if self.dialog:
+                self.dialog.reject()  # reject() or accept(), depending on your logic
+            else:
+                self.close()
+            return
+
+
         self.added_profile_lines = []
         self.scatter_artist = None  # For added red points
         self.survey_points_artist = None  # For main profile blue points
@@ -1626,6 +1704,10 @@ class ProfileQCApp(QWidget):
 
         # 1. Reset index to 0 (just for safety)
         self.data_handler.current_index = 0
+
+
+
+
 
         self.temp_files_already_exist = self.data_handler.check_temp_files_exist()
 
@@ -1968,12 +2050,10 @@ class ProfileQCApp(QWidget):
 
         self.btn_finish_push.setVisible(condition_met)
 
-
     def end_session(self):
         self.data_handler.end_session()
         if self.dialog:
             self.dialog.accept()
-
 
     def finish_and_push(self):
         """Finalize and push all profiles to the database. Create Sands Ready Files etc."""
@@ -1993,7 +2073,7 @@ class ProfileQCApp(QWidget):
 
         if self.data_handler.flagged_profiles:
           confirm = QMessageBox.warning(self, "Flagged Profiles",
-                                "One or more profiles have been flagged. Pushing will mark the entire survey as Rejected.",
+                                "One or more profiles have been flagged. Pushing will set pass the selected fail reason to Admin for review.\n\n",
                                         QMessageBox.Yes | QMessageBox.No)
         else:
             confirm = QMessageBox.question(
