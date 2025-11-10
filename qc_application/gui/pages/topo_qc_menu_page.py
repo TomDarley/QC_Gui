@@ -8,6 +8,7 @@ class TopoQCMenuPage(QWidget):
         switch_to_issue_reviewer,
         switch_to_home,
         switch_to_manual_qc_tool,
+        switch_to_sands_data_tool,
         switch_to_batch_tool,
         open_settings_callback,
         switch_to_topo_qc_admin,  # ← ADD THIS
@@ -31,6 +32,9 @@ class TopoQCMenuPage(QWidget):
         manual_button = QPushButton("Manual QC Tool")
         manual_button.clicked.connect(switch_to_manual_qc_tool)
 
+        sands_button = QPushButton("SANDs Data Tool")
+        sands_button.clicked.connect(switch_to_sands_data_tool)
+
         batch_button = QPushButton("Batch Tool")
         batch_button.clicked.connect(switch_to_batch_tool)
 
@@ -46,6 +50,7 @@ class TopoQCMenuPage(QWidget):
         layout.addWidget(title)
         layout.addWidget(qc_button)
         layout.addWidget(manual_button)
+        layout.addWidget(sands_button)
         layout.addWidget(batch_button)
         layout.addWidget(issue_button)
         layout.addWidget(admin_button)  # ← Add admin button

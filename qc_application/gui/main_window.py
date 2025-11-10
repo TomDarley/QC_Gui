@@ -11,7 +11,7 @@ from qc_application.gui.pages.topo_manual_qc_page  import ManualQCPage
 from qc_application.gui.pages.topo_batcher_page import BatcherPage
 from qc_application.gui.pages.topo_admin_page import TopoAdminPage
 from qc_application.gui.pages.topo_qc_menu_page import TopoQCMenuPage
-
+from qc_application.gui.pages.topo_qc_sands_data_page import SandsDataPage
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -25,6 +25,7 @@ class MainWindow(QWidget):
         self.qc_app = QCPage(self.show_topo_qc_page)
         self.topo_issue_reviewer_app = IssueReviewerPage(self.show_topo_qc_page)
         self.manual_qc_tool_page = ManualQCPage(self.show_topo_qc_page)
+        self.sands_data_page = SandsDataPage(self.show_topo_qc_page)  # Placeholder if needed
         self.batch_tool_page = BatcherPage(self.show_topo_qc_page)
         self.topo_qc_admin_page = TopoAdminPage(self.show_topo_qc_page)
 
@@ -34,6 +35,7 @@ class MainWindow(QWidget):
             self.show_issue_reviewer_page,
             self.show_home_page,
             self.show_manual_qc_tool_page,
+            self.show_sands_data_tool_page,
             self.show_batch_tool_page,
             self.open_settings,
             self.show_topo_qc_admin_page
@@ -45,6 +47,7 @@ class MainWindow(QWidget):
         self.stack.addWidget(self.qc_app)
         self.stack.addWidget(self.topo_issue_reviewer_app)
         self.stack.addWidget(self.manual_qc_tool_page)
+        self.stack.addWidget(self.sands_data_page)
         self.stack.addWidget(self.batch_tool_page)
         self.stack.addWidget(self.topo_qc_admin_page)
 
@@ -60,6 +63,7 @@ class MainWindow(QWidget):
     def show_qc_script_page(self): self.stack.setCurrentWidget(self.qc_app)
     def show_issue_reviewer_page(self): self.stack.setCurrentWidget(self.topo_issue_reviewer_app)
     def show_manual_qc_tool_page(self): self.stack.setCurrentWidget(self.manual_qc_tool_page)
+    def show_sands_data_tool_page(self): self.stack.setCurrentWidget(self.sands_data_page)
     def show_batch_tool_page(self): self.stack.setCurrentWidget(self.batch_tool_page)
     def show_topo_qc_admin_page(self): self.stack.setCurrentWidget(self.topo_qc_admin_page)
 

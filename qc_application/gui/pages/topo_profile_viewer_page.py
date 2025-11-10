@@ -382,14 +382,6 @@ class DataHandler:
 
         return bool(result)
 
-
-
-
-
-
-
-
-
     def check_if_database_push_completed(self):
         """
         Checks if the current survey (survey_unit + date) has already been pushed
