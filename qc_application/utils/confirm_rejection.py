@@ -102,7 +102,7 @@ def confirm_rejection(survey_id):
     print(f"Rejection confirmed for survey {survey_id}")
 
 
-def reject_failed_entries(survey_id):
+def reject_failed_entries(survey_id, rejection_comment = "Escalated to Rejected by Admin"):
     """
     Updates all enum columns in topo_qc.qc_log for a given survey_id
     where the value is 'Failed', setting it to 'Rejected'.
@@ -110,6 +110,7 @@ def reject_failed_entries(survey_id):
     Args:
         conn: SQLAlchemy connection object
         survey_id: int or str, the survey_id to filter rows
+        comment : str, optional comment to log the rejection reason
 
     Returns:
         total_updated: int, total number of rows updated across all enum columns
@@ -140,13 +141,15 @@ def reject_failed_entries(survey_id):
 
     # Step 2: Update each column
     for col in enum_columns:
+        enum_comment_col = f"{col}_c"
+
         update_query = text(f"""
             UPDATE topo_qc.qc_log
-            SET {col} = 'Rejected'
+            SET {col} = 'Rejected', {enum_comment_col} = :comment
             WHERE survey_id = :survey_id
               AND {col} = 'Failed'
         """)
-        result = conn.execute(update_query, {"survey_id": survey_id})
+        result = conn.execute(update_query, {"survey_id": survey_id, "comment": rejection_comment})
         total_updated += result.rowcount  # number of rows affected in this column
 
     conn.commit()

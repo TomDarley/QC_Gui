@@ -412,7 +412,7 @@ class DataHandler:
             topo_result = conn.execute(
                 text("""
                     SELECT 1
-                    FROM topo_qc.topo_data_history
+                    FROM staging_data.topo_data_history
                     WHERE survey_unit = :survey_unit
                       AND date = :date
                     LIMIT 1
@@ -428,11 +428,11 @@ class DataHandler:
             mp_result = conn.execute(
                 text("""
                     SELECT 1
-                    FROM topo_qc.master_profiles_history
+                    FROM staging_data.master_profiles_history
                     WHERE date = :date
                       AND profile_id IN (
                           SELECT DISTINCT profile_id
-                          FROM topo_qc.master_profiles
+                          FROM staging_data.master_profiles
                           WHERE date = :date
                       )
                     LIMIT 1
@@ -449,7 +449,7 @@ class DataHandler:
             cpa_result = conn.execute(
                 text("""
                     SELECT 1
-                    FROM topo_qc.cpa_table_history
+                    FROM staging_data.cpa_table_history
                     WHERE survey_unit = :survey_unit
                       AND date = :date
                     LIMIT 1
@@ -972,12 +972,12 @@ class DataHandler:
             user_name = settings.get("user")
 
             with conn.begin():
-                conn.execute(text("LOCK TABLE topo_qc.master_profiles IN EXCLUSIVE MODE"))
-                conn.execute(text("LOCK TABLE topo_qc.master_profiles_history IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.master_profiles IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.master_profiles_history IN EXCLUSIVE MODE"))
 
                 # Backup current rows (including sequence)
                 backup_query = text("""
-                    INSERT INTO topo_qc.master_profiles_history (
+                    INSERT INTO staging_data.master_profiles_history (
                         profile_id, date, chainage, elevation, sequence, changed_at, user_name
                     )
                     SELECT profile_id, date, chainage, elevation, sequence, now(), :user_name
@@ -987,14 +987,14 @@ class DataHandler:
                 conn.execute(backup_query, {"ids": profile_ids, "user_name": user_name})
 
                 # Delete old and insert new
-                conn.execute(text("DELETE FROM topo_qc.master_profiles WHERE profile_id = ANY(:ids)"),
+                conn.execute(text("DELETE FROM staging_data.master_profiles WHERE profile_id = ANY(:ids)"),
                              {"ids": profile_ids})
 
                 # **FIX: Include sequence in the insert**
                 insert_data = all_new_mp_data[['profile_id', 'date', 'chainage', 'elevation', 'sequence']].to_dict(
                     orient='records')
                 insert_query = text("""
-                    INSERT INTO topo_qc.master_profiles (profile_id, date, chainage, elevation, sequence)
+                    INSERT INTO staging_data.master_profiles (profile_id, date, chainage, elevation, sequence)
                     VALUES (:profile_id, :date, :chainage, :elevation, :sequence)
                 """)
                 conn.execute(insert_query, insert_data)
@@ -1027,12 +1027,12 @@ class DataHandler:
             date = self.date
 
             with conn.begin():
-                conn.execute(text("LOCK TABLE topo_qc.cpa_table IN EXCLUSIVE MODE"))
-                conn.execute(text("LOCK TABLE topo_qc.cpa_table_history IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.cpa_table IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.cpa_table_history IN EXCLUSIVE MODE"))
 
                 # Backup existing records
                 backup_query = text("""
-                    INSERT INTO topo_qc.cpa_table_history (
+                    INSERT INTO staging_data.cpa_table_history (
                         survey_unit, date, profile, area, changed_at, user_name
                     )
                     SELECT survey_unit, date, profile, area, now(), :user_name
@@ -1042,12 +1042,12 @@ class DataHandler:
                 conn.execute(backup_query, {"survey_unit": survey_unit, "date": date, "user_name": user_name})
 
                 # Delete old and insert new
-                conn.execute(text("DELETE FROM topo_qc.cpa_table WHERE survey_unit = :survey_unit AND date = :date"),
+                conn.execute(text("DELETE FROM staging_data.cpa_table WHERE survey_unit = :survey_unit AND date = :date"),
                              {"survey_unit": survey_unit, "date": date})
 
                 insert_data = all_new_cpa_data.to_dict(orient='records')
                 insert_query = text("""
-                    INSERT INTO topo_qc.cpa_table (survey_unit, date, profile, area)
+                    INSERT INTO staging_data.cpa_table (survey_unit, date, profile, area)
                     VALUES (:survey_unit, :date, :profile, :area)
                 """)
                 conn.execute(insert_query, insert_data)
@@ -1079,7 +1079,7 @@ class DataHandler:
             with conn.begin():  # Transactional block
                 # Backup current rows to history
                 backup_query = text("""
-                    INSERT INTO topo_qc.topo_data_history (
+                    INSERT INTO staging_data.topo_data_history (
                         easting, northing, elevation_od, chainage, fc,
                         profile, reg_id, survey_unit, date, year, month, changed_at, user_name
                     )
@@ -1092,7 +1092,7 @@ class DataHandler:
 
                 # Delete old rows
                 delete_query = text("""
-                    DELETE FROM topo_qc.topo_data
+                    DELETE FROM staging_data.topo_data
                     WHERE survey_unit = :survey_unit AND date = :date
                 """)
                 conn.execute(delete_query, {"survey_unit": survey_unit, "date": date})
@@ -1123,7 +1123,7 @@ class DataHandler:
 
                 # Bulk insert new rows
                 insert_query = text("""
-                    INSERT INTO topo_qc.topo_data (
+                    INSERT INTO staging_data.topo_data (
                         easting, northing, elevation_od, chainage, fc,
                         profile, reg_id, survey_unit, date, year, month
                     )
@@ -1224,14 +1224,14 @@ class DataHandler:
 
         try:
             with conn.begin():
-                conn.execute(text("LOCK TABLE topo_qc.master_profiles IN EXCLUSIVE MODE"))
-                conn.execute(text("LOCK TABLE topo_qc.master_profiles_history IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.master_profiles IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.master_profiles_history IN EXCLUSIVE MODE"))
 
                 # Find the latest change timestamp
                 result = conn.execute(
                     text("""
                         SELECT MAX(changed_at) AS last_change
-                        FROM topo_qc.master_profiles_history
+                        FROM staging_data.master_profiles_history
                         WHERE user_name = :user_name
                     """),
                     {"user_name": user_name}
@@ -1250,7 +1250,7 @@ class DataHandler:
                 result = conn.execute(
                     text("""
                         SELECT DISTINCT profile_id
-                        FROM topo_qc.master_profiles_history
+                        FROM staging_data.master_profiles_history
                         WHERE changed_at = :last_change AND user_name = :user_name
                     """),
                     {"last_change": last_change, "user_name": user_name}
@@ -1263,14 +1263,14 @@ class DataHandler:
                     return
 
                 # Restore previous state
-                delete_query = text("DELETE FROM topo_qc.master_profiles WHERE profile_id = ANY(:ids)")
+                delete_query = text("DELETE FROM staging_data.master_profiles WHERE profile_id = ANY(:ids)")
                 conn.execute(delete_query, {"ids": profile_ids})
 
                 # **FIX: Include sequence column in restore**
                 insert_from_history = text("""
-                    INSERT INTO topo_qc.master_profiles (profile_id, date, chainage, elevation, sequence)
+                    INSERT INTO staging_data.master_profiles (profile_id, date, chainage, elevation, sequence)
                     SELECT profile_id, date, chainage, elevation, sequence
-                    FROM topo_qc.master_profiles_history
+                    FROM staging_data.master_profiles_history
                     WHERE profile_id = ANY(:ids)
                     AND changed_at = :last_change
                     AND user_name = :user_name
@@ -1282,7 +1282,7 @@ class DataHandler:
                 # Optional: clean up the restored history entries
                 conn.execute(
                     text("""
-                        DELETE FROM topo_qc.master_profiles_history
+                        DELETE FROM staging_data.master_profiles_history
                         WHERE profile_id = ANY(:ids)
                         AND changed_at = :last_change
                         AND user_name = :user_name
@@ -1303,14 +1303,14 @@ class DataHandler:
 
         try:
             with conn.begin():
-                conn.execute(text("LOCK TABLE topo_qc.cpa_table IN EXCLUSIVE MODE"))
-                conn.execute(text("LOCK TABLE topo_qc.cpa_table_history IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.cpa_table IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.cpa_table_history IN EXCLUSIVE MODE"))
 
                 # Find the latest change timestamp
                 result = conn.execute(
                     text("""
                         SELECT MAX(changed_at) AS last_change
-                        FROM topo_qc.cpa_table_history
+                        FROM staging_data.cpa_table_history
                         WHERE user_name = :user_name
                     """),
                     {"user_name": user_name}
@@ -1329,7 +1329,7 @@ class DataHandler:
                 result = conn.execute(
                     text("""
                         SELECT DISTINCT survey_unit, date
-                        FROM topo_qc.cpa_table_history
+                        FROM staging_data.cpa_table_history
                         WHERE changed_at = :last_change AND user_name = :user_name
                     """),
                     {"last_change": last_change, "user_name": user_name}
@@ -1343,16 +1343,16 @@ class DataHandler:
                 for survey_unit, date in rows:
                     # Delete current records
                     conn.execute(
-                        text("DELETE FROM topo_qc.cpa_table WHERE survey_unit = :su AND date = :dt"),
+                        text("DELETE FROM staging_data.cpa_table WHERE survey_unit = :su AND date = :dt"),
                         {"su": survey_unit, "dt": date}
                     )
 
                     # Restore from history
                     conn.execute(
                         text("""
-                            INSERT INTO topo_qc.cpa_table (survey_unit, date, profile, area)
+                            INSERT INTO staging_data.cpa_table (survey_unit, date, profile, area)
                             SELECT survey_unit, date, profile, area
-                            FROM topo_qc.cpa_table_history
+                            FROM staging_data.cpa_table_history
                             WHERE survey_unit = :su AND date = :dt
                             AND changed_at = :last_change
                             AND user_name = :user_name
@@ -1363,7 +1363,7 @@ class DataHandler:
                     # Optional cleanup of restored entries
                     conn.execute(
                         text("""
-                            DELETE FROM topo_qc.cpa_table_history
+                            DELETE FROM staging_data.cpa_table_history
                             WHERE survey_unit = :su AND date = :dt
                             AND changed_at = :last_change
                             AND user_name = :user_name
@@ -1384,13 +1384,13 @@ class DataHandler:
 
         try:
             with conn.begin():
-                conn.execute(text("LOCK TABLE topo_qc.topo_data IN EXCLUSIVE MODE"))
-                conn.execute(text("LOCK TABLE topo_qc.topo_data_history IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.topo_data IN EXCLUSIVE MODE"))
+                conn.execute(text("LOCK TABLE staging_data.topo_data_history IN EXCLUSIVE MODE"))
 
                 # Get latest change timestamp
                 result = conn.execute(text("""
                     SELECT MAX(changed_at) AS last_change
-                    FROM topo_qc.topo_data_history
+                    FROM staging_data.topo_data_history
                     WHERE user_name = :user_name
                 """), {"user_name": user_name})
                 last_change = result.scalar()
@@ -1406,7 +1406,7 @@ class DataHandler:
                 # Get affected survey_unit/date pairs
                 result = conn.execute(text("""
                     SELECT DISTINCT survey_unit, date
-                    FROM topo_qc.topo_data_history
+                    FROM staging_data.topo_data_history
                     WHERE changed_at = :last_change AND user_name = :user_name
                 """), {"last_change": last_change, "user_name": user_name})
                 rows = result.fetchall()
@@ -1419,19 +1419,19 @@ class DataHandler:
                 for survey_unit, date in rows:
                     # Delete current topo_data
                     conn.execute(text("""
-                        DELETE FROM topo_qc.topo_data
+                        DELETE FROM staging_data.topo_data
                         WHERE survey_unit = :su AND date = :dt
                     """), {"su": survey_unit, "dt": date})
 
                     # Restore from history
                     conn.execute(text("""
-                        INSERT INTO topo_qc.topo_data (
+                        INSERT INTO staging_data.topo_data (
                             easting, northing, elevation_od, chainage, fc,
                             profile, reg_id, survey_unit, date, year, month
                         )
                         SELECT easting, northing, elevation_od, chainage, fc,
                                profile, reg_id, survey_unit, date, year, month
-                        FROM topo_qc.topo_data_history
+                        FROM staging_data.topo_data_history
                         WHERE survey_unit = :su AND date = :dt
                           AND changed_at = :last_change
                           AND user_name = :user_name
@@ -1440,7 +1440,7 @@ class DataHandler:
 
                     # Optional cleanup
                     conn.execute(text("""
-                        DELETE FROM topo_qc.topo_data_history
+                        DELETE FROM staging_data.topo_data_history
                         WHERE survey_unit = :su AND date = :dt
                           AND changed_at = :last_change
                           AND user_name = :user_name

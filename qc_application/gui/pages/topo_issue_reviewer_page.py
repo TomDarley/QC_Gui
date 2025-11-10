@@ -217,6 +217,11 @@ class IssueReviewerPage(QWidget):
         reviewer_name = USER
         review_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
+
+
+
+
         required_fields = {"check_comment", "checker", "check_date"}
         qc_fields = {"checks_name", "checks_date_checked"}
         topo_fields = {"checker", "check_date", "check_comment", "issue_status"}
