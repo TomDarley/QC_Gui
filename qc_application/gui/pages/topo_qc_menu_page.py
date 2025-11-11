@@ -11,7 +11,8 @@ class TopoQCMenuPage(QWidget):
         switch_to_sands_data_tool,
         switch_to_batch_tool,
         open_settings_callback,
-        switch_to_topo_qc_admin,  # ← ADD THIS
+        switch_to_topo_qc_admin,
+        switch_to_push_to_dash,
     ):
         super().__init__()
         layout = QVBoxLayout()
@@ -41,6 +42,9 @@ class TopoQCMenuPage(QWidget):
         admin_button = QPushButton("Admin Tool")  # ← NEW BUTTON
         admin_button.clicked.connect(switch_to_topo_qc_admin)
 
+        push_to_dash_button = QPushButton("Push To Dash Tool")
+        push_to_dash_button.clicked.connect(switch_to_push_to_dash)
+
         home_button = QPushButton("Home")
         home_button.clicked.connect(switch_to_home)
 
@@ -54,7 +58,7 @@ class TopoQCMenuPage(QWidget):
         layout.addWidget(batch_button)
         layout.addWidget(issue_button)
         layout.addWidget(admin_button)  # ← Add admin button
-
+        layout.addWidget(push_to_dash_button)
 
         layout.addWidget(home_button)
 

@@ -33,6 +33,7 @@ from qc_application.config.app_settings import AppSettings
 
 from qc_application.services.topo_calculate_cpa_service import CalculateCPATool
 from qc_application.utils.calculate_easting_northings import calculate_missing_northing_easting
+from qc_application.utils.name_check_helper_functions import survey_naming_check_results
 from qc_application.utils.profile_viewer_pure_functions import qc_profile, find_over_spacing
 from qc_application.utils.database_connection import establish_connection
 # --- Global Configuration and Stub Functions ---
@@ -744,10 +745,6 @@ class DataHandler:
         temp_mp_output_dir = os.path.join(temp_dir, 'New_MP_Data')
         temp_cpa_output_dir = os.path.join(temp_dir, 'Calculated_CPA_Values')
 
-
-
-
-
         # 1) Check if temp files exist
         if not self.check_temp_files_exist():
             QMessageBox.information(
@@ -1219,14 +1216,17 @@ class DataHandler:
                 conn.execute(text("LOCK TABLE staging_data.master_profiles IN EXCLUSIVE MODE"))
                 conn.execute(text("LOCK TABLE staging_data.master_profiles_history IN EXCLUSIVE MODE"))
 
+                # We need to only target the profiles relevant to this user/session
+                unique_profiles =  self.unique_profiles
+
                 # Find the latest change timestamp
                 result = conn.execute(
                     text("""
                         SELECT MAX(changed_at) AS last_change
                         FROM staging_data.master_profiles_history
-                        WHERE user_name = :user_name
+                        WHERE user_name = :user_name AND profile_id = ANY(:profile_ids)
                     """),
-                    {"user_name": user_name}
+                    {"user_name": user_name, "profile_ids": unique_profiles['reg_id'].tolist()}
                 )
                 last_change = result.scalar()
 
@@ -1244,8 +1244,10 @@ class DataHandler:
                         SELECT DISTINCT profile_id
                         FROM staging_data.master_profiles_history
                         WHERE changed_at = :last_change AND user_name = :user_name
+                        AND profile_id = ANY(:profile_ids)
+                        
                     """),
-                    {"last_change": last_change, "user_name": user_name}
+                    {"last_change": last_change, "user_name": user_name, "profile_ids": unique_profiles['reg_id'].tolist()}
                 )
                 profile_ids = [r[0] for r in result.fetchall()]
 
@@ -1298,14 +1300,19 @@ class DataHandler:
                 conn.execute(text("LOCK TABLE staging_data.cpa_table IN EXCLUSIVE MODE"))
                 conn.execute(text("LOCK TABLE staging_data.cpa_table_history IN EXCLUSIVE MODE"))
 
+                survey_unit = self.survey_unit
+
+
                 # Find the latest change timestamp
                 result = conn.execute(
                     text("""
                         SELECT MAX(changed_at) AS last_change
                         FROM staging_data.cpa_table_history
                         WHERE user_name = :user_name
+                        AND survey_unit = :survey_unit
+                        
                     """),
-                    {"user_name": user_name}
+                    {"user_name": user_name, "survey_unit": survey_unit}
                 )
                 last_change = result.scalar()
 
@@ -1323,6 +1330,7 @@ class DataHandler:
                         SELECT DISTINCT survey_unit, date
                         FROM staging_data.cpa_table_history
                         WHERE changed_at = :last_change AND user_name = :user_name
+                        
                     """),
                     {"last_change": last_change, "user_name": user_name}
                 )
@@ -1379,12 +1387,15 @@ class DataHandler:
                 conn.execute(text("LOCK TABLE staging_data.topo_data IN EXCLUSIVE MODE"))
                 conn.execute(text("LOCK TABLE staging_data.topo_data_history IN EXCLUSIVE MODE"))
 
+                survey_unit = self.survey_unit
+
                 # Get latest change timestamp
                 result = conn.execute(text("""
                     SELECT MAX(changed_at) AS last_change
                     FROM staging_data.topo_data_history
                     WHERE user_name = :user_name
-                """), {"user_name": user_name})
+                    AND survey_unit = :survey_unit
+                    """), {"user_name": user_name, "survey_unit": survey_unit})
                 last_change = result.scalar()
 
                 if not last_change:
@@ -1448,7 +1459,7 @@ class DataHandler:
 
     def undoQcLogFlags(self, conn):
         """
-        NOT USED
+
         Undo QC log flags for the flagged profiles in the current survey."""
 
         date = self.date
@@ -1472,37 +1483,41 @@ class DataHandler:
 
                 survey_id = row[0]
 
-                history_result= conn.execute(
-                    text("""
-                        SELECT * FROM topo_qc.topo_issue_history WHERE survey_id = :survey_id AND new_issue_status = 'Failed'
-                        ORDER BY updated_at DESC LIMIT 1
-                    """),
-                    {"survey_id": survey_id}
-                )
-                history_row = history_result.mappings().first()
+                possible_updated_fields = ["checks_pl_point_spacing",
+                                           "checks_pl_point_spacing_c",
+                                           "checks_pl_profile_start_position",
+                                           "checks_pl_profile_start_position_c",
+                                           "checks_pl_seaward_limit",
+                                           "checks_pl_seaward_limit"
+                                           ]
 
-                if not history_row:
-                    logging.info("No rejected issue history found to undo.")
-                    return
+                # get the orginal survey_id INSERT values and then use them to reset the qc_log and clear the history
+                get_orginal_values = text(f"""SELECT history_id, survey_id, issue_field, new_issue_status, issue_comment FROM topo_qc.topo_issue_history
+                                              WHERE survey_id = :survey_id AND action_type = 'INSERT' 
+                                              AND issue_field IN :fields ORDER BY updated_at DESC""")
+                original_values_result = conn.execute(get_orginal_values, {"survey_id": survey_id,
+                                                                           "fields": tuple(possible_updated_fields), })
 
-                unflag_field = history_row['issue_field']
+                df_original_values = pd.DataFrame(original_values_result.fetchall(),
+                                                  columns=original_values_result.keys())
+
+                print(df_original_values)
+                for row in df_original_values.itertuples():
+                    print(row)
+                    issue_comment_field = row.issue_field + "_c"
+
+                    # reset the topo_survey table field to the original value
+                    reset_field = text(
+                        f"""UPDATE topo_qc.qc_log SET {row.issue_field} = :issue_status,{issue_comment_field} = :issue_comment WHERE survey_id = :survey_id""")
+                    print(reset_field)
+                    conn.execute(reset_field, {"issue_status": row.new_issue_status, 'issue_comment': row.issue_comment,
+                                               "survey_id": row.survey_id})
 
 
-                old_issue_comment  = history_row['old_issue_comment']
+                    clear_history = text(f"""DELETE FROM topo_qc.topo_issue_history
+                                               WHERE history_id <> :history_id AND issue_field = :issue_field AND survey_id = :survey_id""")
+                    conn.execute(clear_history, {"history_id": row.history_id, "issue_field": row.issue_field, "survey_id": row.survey_id})
 
-
-                update_query = text(f"""
-                    UPDATE topo_qc.qc_log
-                    SET {unflag_field} = 'Issue',
-                        {unflag_field}_c = :old_comment
-                    WHERE survey_id = :survey_id
-                """)
-                conn.execute(update_query, {
-                    "survey_id": survey_id,
-
-                    "old_comment": old_issue_comment
-                })
-                logging.info(f"Unflagged QC log field {unflag_field} to Omitted.")
 
         except SQLAlchemyError as e:
             logging.error(f"Failed to undo QC log flags: {e}")

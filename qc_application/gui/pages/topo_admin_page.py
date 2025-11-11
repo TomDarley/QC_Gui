@@ -19,7 +19,21 @@ class StatusColorDelegate(QStyledItemDelegate):
         row = index.row()
         col_count = model.columnCount()
 
-        # Check if the row contains "Rejected" anywhere
+        # Locate pushed_to_dash column once
+        pushed_to_dash_col = None
+        for i in range(col_count):
+            if model.headerData(i, Qt.Horizontal) == "pushed_to_dash":
+                pushed_to_dash_col = i
+                break
+
+        # Check if pushed_to_dash is true for this row
+        row_pushed = False
+        if pushed_to_dash_col is not None:
+            val = model.index(row, pushed_to_dash_col).data(Qt.ItemDataRole.DisplayRole)
+            if str(val).lower() in ("true", "t", "1", "yes"):
+                row_pushed = True
+
+        # Check if row is rejected anywhere
         row_rejected = False
         for c in range(col_count):
             cell_text = model.index(row, c).data(Qt.ItemDataRole.DisplayRole)
@@ -27,12 +41,16 @@ class StatusColorDelegate(QStyledItemDelegate):
                 row_rejected = True
                 break
 
-        # If row is rejected -> whole row red
+        # Priority coloring rules
+        if row_pushed:
+            option.backgroundBrush = QColor(173, 216, 230)  # Light blue
+            return
+
         if row_rejected:
             option.backgroundBrush = QColor("red")
             return
 
-        # Otherwise color *cell-by-cell* based on its content
+        # Otherwise color cell individually
         text = index.data(Qt.ItemDataRole.DisplayRole)
         if not text:
             return
@@ -462,25 +480,54 @@ class TopoAdminPage(QWidget):
                     if "overdue" in columns:
                         overdue_col_index = columns.index("overdue")
 
+                    qc_folder_col_index = columns.index("qc_folder") if "qc_folder" in columns else None
+
+                    # Make all column names lowercase and stripped
+                    normalized_columns = [str(col).strip().lower() for col in columns]
+
+                    # Find index if it exists
+                    pushed_to_dash_col_index = normalized_columns.index(
+                        "pushed_to_dash") if "pushed_to_dash" in normalized_columns else None
+
                     for r_idx, row in enumerate(rows):
+
                         highlight_row_red = False
+                        highlight_row_blue = False  # NEW
+
+                        # Check rejected from qc folder column
                         if qc_folder_col_index is not None:
                             qc_value = str(row[qc_folder_col_index]).lower()
                             if "rejected" in qc_value:
                                 highlight_row_red = True
 
+                        # Check overdue
                         if overdue_col_index is not None:
                             overdue_value = str(row[overdue_col_index]).lower()
                             if overdue_value == 'true':
                                 highlight_row_red = True
 
+                        # NEW: Check pushed_to_dash
+                        if pushed_to_dash_col_index is not None:
+                            pushed_value = str(row[pushed_to_dash_col_index]).lower()
+                            if pushed_value in ("true", "t", "1", "yes"):
+                                highlight_row_blue = True
+
                         for c_idx, value in enumerate(row):
                             item = QTableWidgetItem(str(value))
                             flags = item.flags() & ~Qt.ItemFlag.ItemIsEditable
 
-                            if highlight_row_red:
+                            # Priority coloring:
+                            if highlight_row_blue:
+                                # Entire row light blue
+                                item.setBackground(QColor("blue"))  # light blue
                                 flags &= ~Qt.ItemFlag.ItemIsSelectable
+
+                            elif highlight_row_red:
+                                # Entire row red
                                 item.setBackground(QColor("red"))
+                                flags &= ~Qt.ItemFlag.ItemIsSelectable
+
+                            # Otherwise cell-level logic:
                             elif "rejected" in str(value).lower():
                                 item.setBackground(QColor("red"))
                             elif "Failed" in str(value):

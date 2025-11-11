@@ -76,7 +76,11 @@ class ManualQCPage(QWidget):
                 return
 
         try:
-            result = self.conn.execute(text("SELECT * FROM topo_qc.qc_log;"))
+            result = self.conn.execute(text("""
+                SELECT *
+                FROM topo_qc.qc_log
+                WHERE qc_folder NOT ILIKE '%Rejected%'
+            """))
             all_rows = result.fetchall()
             colnames = list(result.keys())   # convert to list for indexing if needed
 

@@ -51,7 +51,11 @@ class CalculateCPATool:
 
             # Extract Numpy arrays of the chainage and elevation data
             chainage = df["chainage"].values
-            elevation = df["elevation"].values
+            try:
+                elevation = df["elevation"].values
+
+            except KeyError:
+                elevation = df["elevation_od"].values
 
             # Create an interpolation function - interpolate the data to get more points
             interpolation_func = interp1d(chainage, elevation, kind="linear")

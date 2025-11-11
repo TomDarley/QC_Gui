@@ -12,6 +12,8 @@ from qc_application.gui.pages.topo_batcher_page import BatcherPage
 from qc_application.gui.pages.topo_admin_page import TopoAdminPage
 from qc_application.gui.pages.topo_qc_menu_page import TopoQCMenuPage
 from qc_application.gui.pages.topo_qc_sands_data_page import SandsDataPage
+from qc_application.gui.pages.push_to_dash_page import PushToDashPage
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -28,6 +30,7 @@ class MainWindow(QWidget):
         self.sands_data_page = SandsDataPage(self.show_topo_qc_page)  # Placeholder if needed
         self.batch_tool_page = BatcherPage(self.show_topo_qc_page)
         self.topo_qc_admin_page = TopoAdminPage(self.show_topo_qc_page)
+        self.push_to_dash_page = PushToDashPage(self.show_topo_qc_page)
 
         # TopoQCPage controls navigation
         self.topo_qc_page = TopoQCMenuPage(
@@ -38,7 +41,9 @@ class MainWindow(QWidget):
             self.show_sands_data_tool_page,
             self.show_batch_tool_page,
             self.open_settings,
-            self.show_topo_qc_admin_page
+            self.show_topo_qc_admin_page,
+            self.show_push_to_dash_page
+
         )
 
         # Add widgets to stack
@@ -50,6 +55,7 @@ class MainWindow(QWidget):
         self.stack.addWidget(self.sands_data_page)
         self.stack.addWidget(self.batch_tool_page)
         self.stack.addWidget(self.topo_qc_admin_page)
+        self.stack.addWidget(self.push_to_dash_page)
 
         self.stack.setCurrentWidget(self.home_page)
 
@@ -66,6 +72,7 @@ class MainWindow(QWidget):
     def show_sands_data_tool_page(self): self.stack.setCurrentWidget(self.sands_data_page)
     def show_batch_tool_page(self): self.stack.setCurrentWidget(self.batch_tool_page)
     def show_topo_qc_admin_page(self): self.stack.setCurrentWidget(self.topo_qc_admin_page)
+    def show_push_to_dash_page(self): self.stack.setCurrentWidget(self.push_to_dash_page)
 
 
 
