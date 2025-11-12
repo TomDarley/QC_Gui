@@ -1034,24 +1034,24 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "survey_received": survey_completion_date,
         "delivery_reference": "Where I get this",
         "gen_metadata": check_metadata(input_text),
-        "gen_metadata_c": "Auto Checked" if check_metadata(input_text) == "Pass" else "Missing",
+        "gen_metadata_ic": "Auto Checked" if check_metadata(input_text) == "Pass" else "Missing",
         "gen_survey_report": check_survey_report(input_text)[0],
-        "gen_survey_report_c": check_survey_report(input_text)[1],
+        "gen_survey_report_ic": check_survey_report(input_text)[1],
         "gen_added_to_high_level_planner": "Pass" if complete_high_level_planner else "Issue",
-        "gen_added_to_high_level_planner_c": "Survey Added to High-Level Planner" if complete_high_level_planner else "Survey not added to High-Level Planner",
+        "gen_added_to_high_level_planner_ic": "Survey Added to High-Level Planner" if complete_high_level_planner else "Survey not added to High-Level Planner",
 
         "gen_date_checked": gen_date_checked,
         "gen_name": gen_name,
         "data_profile_xyz_txt": os.path.basename(input_text),
-        "data_profile_xyz_txt_c": data_profile_xyz_c,
+        "data_profile_xyz_txt_ic": data_profile_xyz_c,
         "checks_pl_on_correct_profile_lines": "Pass" if points_lie_on_correct_profile else "Issue",
-        "checks_pl_on_correct_profile_lines_c": "All points lie on correct profile lines" if points_lie_on_correct_profile else "One or more points lie on incorrect profile lines",
+        "checks_pl_on_correct_profile_lines_ic": "All points lie on correct profile lines" if points_lie_on_correct_profile else "One or more points lie on incorrect profile lines",
         "checks_pl_point_spacing": get_overspacing_status(lengths_over_spec),
-        "checks_pl_point_spacing_c": f"{len(lengths_over_spec)} over spacing found",
+        "checks_pl_point_spacing_ic": f"{len(lengths_over_spec)} over spacing found",
         "checks_pl_seaward_limit": get_made_depth_status(depth_checks),
-        "checks_pl_seaward_limit_c": f"{len(depth_checks)} profiles failed to make depth",
+        "checks_pl_seaward_limit_ic": f"{len(depth_checks)} profiles failed to make depth",
         "checks_pl_offline_variation": get_offline_points_status(offline_points),
-        "checks_pl_offline_variation_c": f"{len(offline_points)} found offline",
+        "checks_pl_offline_variation_ic": f"{len(offline_points)} found offline",
         "qc_folder": set_workspace,
 
 
@@ -1060,12 +1060,12 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
     if os.path.exists(input_text):
         survey_meta.update({
             "bl_profile_data": "Pass",
-            "bl_profile_data_c": "Auto Checked",
+            "bl_profile_data_ic": "Auto Checked",
         })
     else:
         survey_meta.update({
             "bl_profile_data": "Issue",
-            "bl_profile_data_c": f"Profile file missing: {input_text}",
+            "bl_profile_data_ic": f"Profile file missing: {input_text}",
         })
 
 
@@ -1255,10 +1255,10 @@ def run_photo_checks(selected_interim_lines, survey_completion_date, input_text_
     # Use conditional variables to eliminate redundant if/else blocks
     if is_baseline_survey:
         photo_status_key = "bl_profile_photos"
-        photo_comments_key = "bl_profile_photos_c"
+        photo_comments_key = "bl_profile_photos_ic"
     else:
         photo_status_key = "checks_pl_photos"
-        photo_comments_key = "checks_pl_photos_c"
+        photo_comments_key = "checks_pl_photos_ic"
 
     # Set initial values assuming no issues
     photo_status = "Pass"
@@ -1552,12 +1552,12 @@ def create_os_tiles(tb_text_file):
         dict: A dictionary with the status of OS-Tile creation:
             {
                 "checks_cd_ascii_created_split": "Pass" or "Issue",
-                "checks_cd_ascii_created_split_c": "Auto Generated" or "Auto Generation Failed"
+                "checks_cd_ascii_created_split_ic": "Auto Generated" or "Auto Generation Failed"
             }
     """
     status = {
         "checks_cd_ascii_created_split": "Issue",
-        "checks_cd_ascii_created_split_c": "Auto Generation Failed"
+        "checks_cd_ascii_created_split_ic": "Auto Generation Failed"
     }
 
     try:
@@ -1585,7 +1585,7 @@ def create_os_tiles(tb_text_file):
         logging.info("OS_Tiles created successfully")
         status.update({
             "checks_cd_ascii_created_split": "Pass",
-            "checks_cd_ascii_created_split_c": "Auto Generated"
+            "checks_cd_ascii_created_split_ic": "Auto Generated"
         })
 
     except Exception as e:
@@ -1615,22 +1615,22 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     # Initialize survey_meta with default failure states
     survey_meta.update({
         "bl_other_data": "Issue",
-        "bl_other_data_c": "Missing, could not be found",
+        "bl_other_data_ic": "Missing, could not be found",
 
         "bl_xyz_data": "Issue",
-        "bl_xyz_data_c": "Missing, could not be found",
+        "bl_xyz_data_ic": "Missing, could not be found",
         "bl_raster_data": "Issue",
-        "bl_raster_data_c": "Missing, could not be found",
+        "bl_raster_data_ic": "Missing, could not be found",
 
 
 
 
         "data_baseline_xyz_txt": "Issue",
-        "data_baseline_xyz_txt_c": "Missing, could not be found",
+        "data_baseline_xyz_txt_ic": "Missing, could not be found",
         "data_raster_grid": "Issue",
-        "data_raster_grid_c": "Missing",
+        "data_raster_grid_ic": "Missing",
         "bl_profile_photos": "Issue",
-        "bl_profile_photos_c": "Missing, could not be found",
+        "bl_profile_photos_ic": "Missing, could not be found",
         "checks_cd_ascii_created_split": "false",
 
     })
@@ -1648,18 +1648,18 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     if tb_text_file:
         survey_meta.update({
             "data_baseline_xyz_txt": os.path.basename(tb_text_file),
-            "data_baseline_xyz_txt_c": "Found",
+            "data_baseline_xyz_txt_ic": "Found",
             "bl_xyz_data": "Pass",
-            "bl_xyz_data_c": "Found"
+            "bl_xyz_data_ic": "Found"
 
         })
 
     if raster_asc_file:
         survey_meta.update({
             "data_raster_grid": os.path.basename(raster_asc_file),
-            "data_raster_grid_c": "Found",
+            "data_raster_grid_ic": "Found",
             "bl_raster_data": "Pass",
-            "bl_raster_data_c": "Found"
+            "bl_raster_data_ic": "Found"
         })
 
     # OS-Tile creation if both files exist
@@ -1671,14 +1671,14 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
         logging.error("TB.txt or Raster ASC file not found, cannot create OS-Tiles")
         survey_meta.update({
             "checks_cd_ascii_created_split": "Issue",
-            "checks_cd_ascii_created_split_c": "Auto Generation Failed"
+            "checks_cd_ascii_created_split_ic": "Auto Generation Failed"
         })
 
     # If all files exist, mark other data as Pass
     if tb_text_file and raster_asc_file and has_photos:
         survey_meta.update({
             "bl_other_data": "Pass",
-            "bl_other_data_c": "Found"
+            "bl_other_data_ic": "Found"
         })
 
     # Run downstream geoprocessing functions
@@ -1809,24 +1809,24 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
     # Update survey_meta with labeling results
     survey_meta.update({
         "gen_data_labelling": result,
-        "gen_data_labelling_c": comment,
+        "gen_data_labelling_ic": comment,
         "gen_data_filename": result,
-        "gen_data_filename_c": comment
+        "gen_data_filename_ic": comment
     })
 
     # Determine columns and values based on survey type
     if not bool_baseline_survey:
         columns = [
             "survey_unit", "survey_type", "completion_date", "survey_received",
-            "delivery_reference", "gen_data_labelling", "gen_data_labelling_c",
-            "gen_data_filename", "gen_data_filename_c", "gen_metadata", "gen_metadata_c",
-            "gen_survey_report", "gen_survey_report_c", "gen_control_observations",
-            "gen_date_checked","gen_added_to_high_level_planner","gen_added_to_high_level_planner_c", "gen_name", "data_profile_xyz_txt", "data_profile_xyz_txt_c",
-            "checks_pl_on_correct_profile_lines", "checks_pl_on_correct_profile_lines_c",
-            "checks_pl_point_spacing", "checks_pl_point_spacing_c",
-            "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
-            "checks_pl_offline_variation", "checks_pl_offline_variation_c",
-            "qc_folder", "checks_pl_photos", "checks_pl_photos_c",
+            "delivery_reference", "gen_data_labelling", "gen_data_labelling_ic",
+            "gen_data_filename", "gen_data_filename_ic", "gen_metadata", "gen_metadata_ic",
+            "gen_survey_report", "gen_survey_report_ic", "gen_control_observations",
+            "gen_date_checked","gen_added_to_high_level_planner","gen_added_to_high_level_planner_ic", "gen_name", "data_profile_xyz_txt", "data_profile_xyz_txt_ic",
+            "checks_pl_on_correct_profile_lines", "checks_pl_on_correct_profile_lines_ic",
+            "checks_pl_point_spacing", "checks_pl_point_spacing_ic",
+            "checks_pl_seaward_limit", "checks_pl_seaward_limit_ic",
+            "checks_pl_offline_variation", "checks_pl_offline_variation_ic",
+            "qc_folder", "checks_pl_photos", "checks_pl_photos_ic",
             "checks_date_checked", "checks_name",
         ]
 
@@ -1844,18 +1844,18 @@ def push_results_to_database(survey_meta, input_text_file, region, bool_baseline
     else:  # Baseline survey
         columns = [
             "survey_unit", "survey_type", "completion_date", "survey_received",
-            "delivery_reference", "gen_data_labelling", "gen_data_labelling_c",
-            "gen_data_filename", "gen_data_filename_c", "gen_metadata", "gen_metadata_c",
-            "gen_survey_report", "gen_survey_report_c", "gen_control_observations","gen_added_to_high_level_planner","gen_added_to_high_level_planner_c",
-            "gen_date_checked", "gen_name", "data_baseline_xyz_txt", "data_baseline_xyz_txt_c",
-            "checks_cd_ascii_created_split", "checks_cd_ascii_created_split_c",
-            "data_raster_grid", "data_raster_grid_c", "bl_xyz_data","bl_xyz_data_c", "bl_raster_data","bl_raster_data_c",
-            "bl_profile_data", "bl_profile_data_c",
-            "bl_profile_photos", "bl_profile_photos_c", "bl_other_data", "bl_other_data_c",
-            "data_profile_xyz_txt", "data_profile_xyz_txt_c", "checks_pl_on_correct_profile_lines",
-            "checks_pl_on_correct_profile_lines_c","checks_pl_point_spacing",
-            "checks_pl_point_spacing_c", "checks_pl_seaward_limit", "checks_pl_seaward_limit_c",
-            "checks_pl_offline_variation", "checks_pl_offline_variation_c", "qc_folder",
+            "delivery_reference", "gen_data_labelling", "gen_data_labelling_ic",
+            "gen_data_filename", "gen_data_filename_ic", "gen_metadata", "gen_metadata_ic",
+            "gen_survey_report", "gen_survey_report_ic", "gen_control_observations","gen_added_to_high_level_planner","gen_added_to_high_level_planner_ic",
+            "gen_date_checked", "gen_name", "data_baseline_xyz_txt", "data_baseline_xyz_txt_ic",
+            "checks_cd_ascii_created_split", "checks_cd_ascii_created_split_ic",
+            "data_raster_grid", "data_raster_grid_ic", "bl_xyz_data","bl_xyz_data_ic", "bl_raster_data","bl_raster_data_ic",
+            "bl_profile_data", "bl_profile_data_ic",
+            "bl_profile_photos", "bl_profile_photos_ic", "bl_other_data", "bl_other_data_ic",
+            "data_profile_xyz_txt", "data_profile_xyz_txt_ic", "checks_pl_on_correct_profile_lines",
+            "checks_pl_on_correct_profile_lines_ic","checks_pl_point_spacing",
+            "checks_pl_point_spacing_ic", "checks_pl_seaward_limit", "checks_pl_seaward_limit_ic",
+            "checks_pl_offline_variation", "checks_pl_offline_variation_ic", "qc_folder",
             "bl_name", "bl_date_checked","checks_date_checked", "checks_name"
         ]
 
