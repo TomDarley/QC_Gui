@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QPushButton, QMessageBox,
-    QHeaderView, QComboBox, QTableWidgetItem
+    QHeaderView, QComboBox, QTableWidgetItem, QHBoxLayout
 )
 from sqlalchemy import text
 import pandas as pd
@@ -23,41 +23,193 @@ class BatcherPage(QWidget):
         self.table_name = "topo_qc.topo_batch_ready"
         self.primary_key = "survey_id"
         self.auto_batch_df = None
-
         self.passed_batch_folder_ids = None
         self.batched_folders = None
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(50, 50, 50, 50)
-        layout.setSpacing(20)
+        # === Set Styles ===
+        self.setStyleSheet("""
+            /* === Title Styling === */
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
 
-        label = QLabel("Topo Batcher")
-        label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        label.setAlignment(Qt.AlignCenter)
+            QLabel#InstructionLabel {
+                font-size: 14px;
+                color: #555;
+                margin-bottom: 10px;
+            }
 
+            /* === Table Styling === */
+            QTableWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                gridline-color: #D6DBDF;
+                selection-background-color: #AED6F1;
+                selection-color: #1B2631;
+                alternate-background-color: #F8F9F9;
+            }
+            QHeaderView::section {
+                background-color: #D6EAF8;
+                color: #154360;
+                font-weight: bold;
+                font-size: 14px;
+                border: 1px solid #AED6F1;
+                padding: 6px;
+            }
+
+            /* === Default Buttons === */
+            QPushButton {
+                background-color: #D6EAF8;
+                border: 1px solid #AED6F1;
+                color: #154360;
+                font-weight: 500;
+                font-size: 14px;
+                border-radius: 6px;
+                padding: 8px 14px;
+            }
+            QPushButton:hover {
+                background-color: #AED6F1;
+            }
+
+            /* === Primary Green Buttons === */
+            QPushButton#GreenButton {
+                background-color: #28A745;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+            QPushButton#GreenButton:hover {
+                background-color: #218838;
+            }
+
+            /* === Back Button === */
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+        """)
+
+        # === Main Layout ===
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(20)
+
+        # === Title ===
+        title_label = QLabel("Topo Batcher")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # === Instruction text under title ===
+        instruction_label = QLabel(
+            "Review ready surveys below, check batch files, create folders, and send files via FTP."
+        )
+        instruction_label.setObjectName("InstructionLabel")
+        instruction_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(instruction_label)
+
+        # === Back Button under title ===
+        top_btn_layout = QHBoxLayout()
+        top_btn_layout.addStretch()
+        back_button = QPushButton("Return to QC Menu")
+        back_button.setObjectName("ReturnButton")
+        back_button.clicked.connect(go_back)
+        top_btn_layout.addWidget(back_button)
+        top_btn_layout.addStretch()
+        main_layout.addLayout(top_btn_layout)
+
+        # === Table ===
         self.table_widget = QTableWidget()
         self.load_table_data()
+        self.table_widget.horizontalHeader().setStretchLastSection(True)
+        self.table_widget.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        main_layout.addWidget(self.table_widget)
 
-        self.submit_button = QPushButton("Check Batch Files")
+        # === Action Buttons at Bottom ===
+        bottom_btn_layout = QHBoxLayout()
+        bottom_btn_layout.addStretch()
+
+        # === Action Buttons at Bottom with different colors and smaller size ===
+        bottom_btn_layout = QHBoxLayout()
+        bottom_btn_layout.addStretch()
+
+        # Button 1: Check Batch Files (Green)
+        self.submit_button = QPushButton("1) Check Batch Files")
+        self.submit_button.setStyleSheet("""
+            QPushButton {
+                background-color: #28A745;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 6px 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
         self.submit_button.clicked.connect(self.check_batch_files)
+        bottom_btn_layout.addWidget(self.submit_button)
 
-        self.create_batch_folders_button = QPushButton("Create Batch Folders")
+        # Button 2: Create Batch Folders (Blue)
+        self.create_batch_folders_button = QPushButton("2) Create Batch Folders")
+        self.create_batch_folders_button.setStyleSheet("""
+            QPushButton {
+                background-color: #3498DB;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 6px 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #2E86C1;
+            }
+        """)
         self.create_batch_folders_button.clicked.connect(self.make_batch_folder)
+        bottom_btn_layout.addWidget(self.create_batch_folders_button)
 
-        self.send_batch_using_ftp_button = QPushButton("Send Batched Files")
+        # Button 3: Send Batched Files (Orange)
+        self.send_batch_using_ftp_button = QPushButton("3) Send Batched Files")
+        self.send_batch_using_ftp_button.setStyleSheet("""
+            QPushButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 6px 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #CA6F1E;
+            }
+        """)
         self.send_batch_using_ftp_button.clicked.connect(self.send_batch_files_ftp)
+        bottom_btn_layout.addWidget(self.send_batch_using_ftp_button)
 
-        back_button = QPushButton("Back")
-        back_button.setFixedSize(100, 30)
-        back_button.clicked.connect(go_back)
+        bottom_btn_layout.addStretch()
+        main_layout.addLayout(bottom_btn_layout)
 
-        layout.addWidget(label)
-        layout.addWidget(self.table_widget)
-        layout.addWidget(self.submit_button)
-        layout.addWidget(self.create_batch_folders_button)
-        layout.addWidget(self.send_batch_using_ftp_button)
-        layout.addWidget(back_button)
-        self.setLayout(layout)
+        bottom_btn_layout.addStretch()
+        main_layout.addLayout(bottom_btn_layout)
+
+        self.setLayout(main_layout)
+        self.setWindowTitle("Topo Batcher")
+        self.resize(1000, 600)
 
     def showEvent(self, event):
         logging.info("Refreshing Batch Table")

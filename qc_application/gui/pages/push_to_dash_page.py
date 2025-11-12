@@ -2,7 +2,7 @@ import logging
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QPushButton, QMessageBox,
-    QHeaderView, QTableWidgetItem
+    QHeaderView, QTableWidgetItem, QHBoxLayout
 )
 from sqlalchemy import text
 import pandas as pd
@@ -22,28 +22,124 @@ class PushToDashPage(QWidget):
         self.load_data()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        self.setStyleSheet("""
+            /* === Title Styling === */
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
 
-        title = QLabel("Push To Dash")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
-        layout.addWidget(title)
+            /* === Status / Info Label === */
+            QLabel#StatusLabel {
+                color: #5D6D7E;
+                font-size: 15px;
+                font-style: italic;
+            }
 
+            /* === Table Styling === */
+            QTableWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                gridline-color: #D6DBDF;
+                selection-background-color: #AED6F1;
+                selection-color: #1B2631;
+                alternate-background-color: #F8F9F9;
+            }
+
+            QHeaderView::section {
+                background-color: #D6EAF8;
+                color: #154360;
+                font-weight: bold;
+                font-size: 14px;
+                border: 1px solid #AED6F1;
+                padding: 6px;
+            }
+
+            QTableWidget::item {
+                padding: 6px;
+            }
+
+            /* === Back / Return Button === */
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+
+            /* === Action Button (Green) === */
+            QPushButton#GreenButton {
+                background-color: #28A745;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            QPushButton#GreenButton:hover {
+                background-color: #218838;
+            }
+        """)
+
+        # === Main Layout ===
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(20)
+
+        # Title
+        title_label = QLabel("Push To Dash")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # Status / info label
+        self.status_label = QLabel("Ready to push data to the dashboard...")
+        self.status_label.setObjectName("StatusLabel")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.status_label)
+
+        # Back button (top, under title)
+        back_btn_layout = QHBoxLayout()
+        back_btn_layout.addStretch()
+        self.back_button = QPushButton("Return to QC Menu")
+        self.back_button.setObjectName("ReturnButton")
+        self.back_button.clicked.connect(self.go_back)
+        back_btn_layout.addWidget(self.back_button)
+        back_btn_layout.addStretch()
+        main_layout.addLayout(back_btn_layout)
+
+        # Table
         self.table = QTableWidget()
         self.table.setColumnCount(0)
         self.table.setRowCount(0)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.table)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        main_layout.addWidget(self.table)
 
-        push_button = QPushButton("Push To Dash")
-        push_button.clicked.connect(self.push_to_dash)
-        layout.addWidget(push_button)
+        # Bottom action button
+        bottom_btn_layout = QHBoxLayout()
+        bottom_btn_layout.addStretch()
+        self.push_button = QPushButton("Push To Dash")
+        self.push_button.setObjectName("GreenButton")
+        self.push_button.clicked.connect(self.push_to_dash)
+        bottom_btn_layout.addWidget(self.push_button)
+        bottom_btn_layout.addStretch()
+        main_layout.addLayout(bottom_btn_layout)
 
-        back_button = QPushButton("Back")
-        back_button.clicked.connect(self.go_back)
-        layout.addWidget(back_button)
-
-        self.setLayout(layout)
+        self.setLayout(main_layout)
+        self.setWindowTitle("Push To Dash")
+        self.resize(800, 500)
 
     def load_data(self):
         try:

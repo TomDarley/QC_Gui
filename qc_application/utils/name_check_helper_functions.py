@@ -151,5 +151,5 @@ def check_data_labeling(input_path: str, is_baseline: bool, is_pco: bool) -> Dic
 
     failed_checks = [key for key, value in survey_naming_check_results.items() if not value[0]]
     if failed_checks:
-        return {"Result": "Issue", "Comment": "❌ Failed checks: " + ", ".join(failed_checks)}
+        return {"Result": "Issue", "Comment": "Incorrect Naming: " + ", ".join(failed_checks)}
     return {"Result": "Pass", "Comment": "Auto Checked."}

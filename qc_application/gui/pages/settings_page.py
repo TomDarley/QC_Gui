@@ -1,20 +1,50 @@
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QLineEdit,
-    QFormLayout, QPushButton, QFileDialog, QMessageBox
+    QDialog, QVBoxLayout, QLabel, QLineEdit, QFormLayout,
+    QPushButton, QFileDialog, QMessageBox, QHBoxLayout, QFrame, QScrollArea, QWidget
 )
+from PyQt5.QtCore import Qt
 from qc_application.config.app_settings import AppSettings
 
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Settings")
+        self.setWindowTitle("⚙️ Application Settings")
         self.settings = AppSettings()
+        self.resize(500, 650)
 
-        layout = QVBoxLayout()
-        form = QFormLayout()
+        # === MAIN LAYOUT ===
+        main_layout = QVBoxLayout()
+        main_layout.setAlignment(Qt.AlignTop)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(20)
 
-        # Database
+        # === TITLE ===
+        title = QLabel("Application Settings")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("""
+            font-size: 26px;
+            font-weight: bold;
+            color: #1B2631;
+            border-bottom: 2px solid #5DADE2;
+            padding-bottom: 10px;
+        """)
+        main_layout.addWidget(title)
+
+        # === SCROLLABLE FORM AREA ===
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        scroll_widget = QWidget()
+        form_layout = QFormLayout(scroll_widget)
+        form_layout.setSpacing(15)
+        form_layout.setLabelAlignment(Qt.AlignRight)
+
+        # ===== Database Section =====
+        db_label = QLabel("Database Settings")
+        db_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #154360; margin-top: 10px;")
+        form_layout.addRow(db_label)
+
         self.host_input = QLineEdit(self.settings.data["database"]["host"])
         self.port_input = QLineEdit(self.settings.data["database"]["port"])
         self.db_input = QLineEdit(self.settings.data["database"]["database"])
@@ -22,54 +52,92 @@ class SettingsDialog(QDialog):
         self.pass_input = QLineEdit(self.settings.data["database"]["password"])
         self.pass_input.setEchoMode(QLineEdit.Password)
 
-        form.addRow("Host:", self.host_input)
-        form.addRow("Port:", self.port_input)
-        form.addRow("Database:", self.db_input)
-        form.addRow("User:", self.user_input)
-        form.addRow("Password:", self.pass_input)
+        form_layout.addRow("Host:", self.host_input)
+        form_layout.addRow("Port:", self.port_input)
+        form_layout.addRow("Database:", self.db_input)
+        form_layout.addRow("User:", self.user_input)
+        form_layout.addRow("Password:", self.pass_input)
 
+        self._style_inputs([
+            self.host_input, self.port_input, self.db_input,
+            self.user_input, self.pass_input
+        ])
 
-        # Interim survey path
-        self.interim_input = QLineEdit(self.settings.data["interim_survey_path"])
-        interim_button = QPushButton("Browse…")
-        interim_button.clicked.connect(lambda: self.browse_file(self.interim_input))
-        form.addRow("Interim Survey Path:", self.interim_input)
-        form.addRow("", interim_button)
+        # ===== File Path Section =====
+        path_label = QLabel("File Paths")
+        path_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #154360; margin-top: 20px;")
+        form_layout.addRow(path_label)
 
-        # ArcGIS Python Path
-        self.arcgis_input = QLineEdit(self.settings.data["arcgis_python_path"])
-        arcgis_button = QPushButton("Browse…")
-        arcgis_button.clicked.connect(lambda: self.browse_file(self.arcgis_input))
-        form.addRow("ArcGIS Python Path:", self.arcgis_input)
-        form.addRow("", arcgis_button)
+        self.interim_input = self._add_browse_row(form_layout, "Interim Survey Path:", self.settings.data["interim_survey_path"])
+        self.arcgis_input = self._add_browse_row(form_layout, "ArcGIS Python Path:", self.settings.data["arcgis_python_path"])
+        self.arcgis_pro_input = self._add_browse_row(form_layout, "ArcGIS Pro Path:", self.settings.data["arcgis_pro_path"])
+        self.arcgis_template_input = self._add_browse_row(form_layout, "ArcGIS Template APRX:", self.settings.data["arcgis_template_path"])
 
-        # ArcGIS Pro Executable Path
-        self.arcgis_pro_input = QLineEdit(self.settings.data["arcgis_pro_path"])
-        arcgis_pro_button = QPushButton("Browse…")
-        arcgis_pro_button.clicked.connect(lambda: self.browse_file(self.arcgis_pro_input))
-        form.addRow("ArcGIS Pro Path:", self.arcgis_pro_input)
-        form.addRow("", arcgis_pro_button)
+        # ===== User Info =====
+        user_label = QLabel("User Information")
+        user_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #154360; margin-top: 20px;")
+        form_layout.addRow(user_label)
 
-        # ArcGIS Template APRX File Path
-        self.arcgis_template_input = QLineEdit(self.settings.data["arcgis_template_path"])
-        arcgis_template_button = QPushButton("Browse…")
-        arcgis_template_button.clicked.connect(lambda: self.browse_file(self.arcgis_template_input))
-        form.addRow("ArcGIS Template APRX:", self.arcgis_template_input)
-        form.addRow("", arcgis_template_button)
-
-        # User
         self.user_input_field = QLineEdit(self.settings.data["user"])
-        form.addRow("User Name:", self.user_input_field)
+        self._style_inputs([self.user_input_field])
+        form_layout.addRow("User Name:", self.user_input_field)
 
-        layout.addLayout(form)
+        scroll_area.setWidget(scroll_widget)
+        main_layout.addWidget(scroll_area)
 
-        # Buttons
-        save_button = QPushButton("Save")
+        # === SAVE BUTTON ROW ===
+        button_row = QHBoxLayout()
+        button_row.setAlignment(Qt.AlignRight)
+
+        save_button = QPushButton("💾 Save Settings")
+        save_button.setFixedSize(160, 40)
+        save_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2E86C1;
+                color: white;
+                font-weight: bold;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #1B4F72;
+            }
+        """)
         save_button.clicked.connect(self.save)
-        layout.addWidget(save_button)
 
-        self.setLayout(layout)
-        self.resize(400, 500)
+        button_row.addWidget(save_button)
+        main_layout.addLayout(button_row)
+
+        self.setLayout(main_layout)
+
+    # === HELPERS ===
+    def _add_browse_row(self, form_layout, label, value):
+        """Creates a labeled line edit + browse button row"""
+        hbox = QHBoxLayout()
+        line_edit = QLineEdit(value)
+        browse_btn = QPushButton("Browse…")
+        browse_btn.setFixedWidth(100)
+        browse_btn.clicked.connect(lambda: self.browse_file(line_edit))
+        hbox.addWidget(line_edit)
+        hbox.addWidget(browse_btn)
+        self._style_inputs([line_edit])
+        form_layout.addRow(label, hbox)
+        return line_edit
+
+    def _style_inputs(self, inputs):
+        """Apply consistent styling to all input fields"""
+        for inp in inputs:
+            inp.setStyleSheet("""
+                QLineEdit {
+                    padding: 6px;
+                    border: 1px solid #AED6F1;
+                    border-radius: 4px;
+                    background-color: #F8F9F9;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #5DADE2;
+                    background-color: #FFFFFF;
+                }
+            """)
 
     def browse_file(self, target_input):
         path, _ = QFileDialog.getOpenFileName(self, "Select File")
@@ -84,7 +152,6 @@ class SettingsDialog(QDialog):
             "user": self.user_input.text(),
             "password": self.pass_input.text(),
         }
-
         self.settings.data["arcgis_python_path"] = self.arcgis_input.text()
         self.settings.data["interim_survey_path"] = self.interim_input.text()
         self.settings.data["arcgis_pro_path"] = self.arcgis_pro_input.text()
@@ -92,5 +159,5 @@ class SettingsDialog(QDialog):
         self.settings.data["user"] = self.user_input_field.text()
 
         self.settings.save()
-        QMessageBox.information(self, "Saved", "Settings saved successfully.")
+        QMessageBox.information(self, "✅ Saved", "Settings saved successfully.")
         self.accept()

@@ -10,7 +10,8 @@ from sqlalchemy import text
 from qc_application.gui.pages.topo_profile_viewer_page import ProfileQCApp
 from qc_application.services.topo_survey_checker import SurveyChecker
 from qc_application.utils.database_connection import establish_connection
-
+from collections import defaultdict
+from PyQt5.QtGui import QColor
 
 class ManualQCPage(QWidget):
     def __init__(self, return_home_callback):
@@ -23,10 +24,84 @@ class ManualQCPage(QWidget):
         self.conn =  establish_connection()
 
     def init_ui(self):
+
+        self.setStyleSheet("""
+            /* === Title Styling === */
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
+
+            /* === Status Label === */
+            QLabel#StatusLabel {
+                color: #5D6D7E;
+                font-size: 15px;
+                font-style: italic;
+            }
+
+            /* === Table Styling === */
+            QTableWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                gridline-color: #D6DBDF;
+                selection-background-color: #AED6F1;
+                selection-color: #1B2631;
+                alternate-background-color: #F8F9F9;
+            }
+
+            QHeaderView::section {
+                background-color: #D6EAF8;
+                color: #154360;
+                font-weight: bold;
+                font-size: 14px;
+                border: 1px solid #AED6F1;
+                padding: 6px;
+            }
+
+            QTableWidget::item {
+                padding: 6px;
+            }
+
+            /* === Buttons === */
+            QPushButton {
+                background-color: #07645a;
+                border: 1px solid #AED6F1;
+                color: white;
+                font-weight: 500;
+                font-size: 14px;
+                border-radius: 6px;
+                padding: 8px 14px;
+            }
+
+            QPushButton:hover {
+                background-color: #AED6F1;
+            }
+
+            /* === Primary Orange Buttons (e.g., Return to Menu) === */
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+        """)
+
         # Main layout
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(30, 30, 30, 30)
         self.layout.setSpacing(20)
+
+
 
         # Title
         title = QLabel("Manual QC Tool")
@@ -52,11 +127,14 @@ class ManualQCPage(QWidget):
         button_row.addStretch()  # Add stretch to push the button to the center
         self.return_button = QPushButton("Return to QC Menu")
         self.return_button.clicked.connect(self.return_home_callback)
+
         button_row.addWidget(self.return_button)
         button_row.addStretch()  # Another stretch to center the button
 
         # Add the centered button layout to the main layout
         self.layout.addLayout(button_row)
+
+        self.return_button.setObjectName("ReturnButton")
 
         self.setLayout(self.layout)
 
@@ -101,7 +179,7 @@ class ManualQCPage(QWidget):
                     self.incomplete_rows.append(result_check)
 
             if len(self.incomplete_rows) > 0:
-                self.status_label.setText("Incomplete surveys found:")
+                self.status_label.setText("Incomplete surveys found.\nRun the check profiles tool first then edit the entries as needed.")
             else:
                 self.status_label.setText("All Manual Checks Completed:")
 
@@ -138,12 +216,13 @@ class ManualQCPage(QWidget):
             ["Index", "Survey Unit", "Survey Type", "Completion Date", "Edit", "View Files","Check Profiles"])
         self.table.setRowCount(len(self.incomplete_rows))
 
-        from collections import defaultdict
-        from PyQt5.QtGui import QColor
+
+
 
         # Step 1: Group rows with the same (survey_unit, completion_date)
         group_counts = defaultdict(list)
         for i, row in enumerate(self.incomplete_rows):
+            self.table.setRowHeight(i, 45)
             key = (row["survey_unit"], str(row["completion_date"]))
             group_counts[key].append(i)
 
@@ -176,6 +255,7 @@ class ManualQCPage(QWidget):
             btn.clicked.connect(lambda _, r=row: self.open_edit_dialog(r))
             self.table.setCellWidget(i, 4, btn)
 
+
             view_btn = QPushButton("View Files")
             view_btn.clicked.connect(lambda _, path=row["qc_folder"]: self.open_folder_for_path(path))
             self.table.setCellWidget(i, 5, view_btn)
@@ -184,6 +264,16 @@ class ManualQCPage(QWidget):
             check_btn = QPushButton("Check Profiles")
             check_btn.clicked.connect(lambda _, r=row: self.check_profiles_for_row(r))
             self.table.setCellWidget(i, 6, check_btn)
+
+            btn.setMinimumHeight(20)
+            view_btn.setMinimumHeight(20)
+            check_btn.setMinimumHeight(20)
+
+            btn.setObjectName("EditButton")
+            view_btn.setObjectName("ViewButton")
+            check_btn.setObjectName("CheckButton")
+
+
 
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.layout.addWidget(self.table)

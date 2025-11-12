@@ -1,6 +1,6 @@
 import logging
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTabWidget, QPushButton, QLineEdit,
     QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QApplication,
@@ -10,61 +10,37 @@ from sqlalchemy import text
 from qc_application.utils.confirm_rejection import confirm_rejection, reject_failed_entries, descalate_failed_entries
 from qc_application.utils.database_connection import establish_connection
 
-
 class StatusColorDelegate(QStyledItemDelegate):
-    def initStyleOption(self, option, index):
-        super().initStyleOption(option, index)
-
+    def paint(self, painter, option, index):
         model = index.model()
         row = index.row()
         col_count = model.columnCount()
 
-        # Locate pushed_to_dash column once
-        pushed_to_dash_col = None
-        for i in range(col_count):
-            if model.headerData(i, Qt.Horizontal) == "pushed_to_dash":
-                pushed_to_dash_col = i
-                break
+        # Normalize headers
+        headers = [str(model.headerData(c, Qt.Horizontal)).strip().lower() for c in range(col_count)]
 
-        # Check if pushed_to_dash is true for this row
+        # Check row-level pushed_to_dash
+        pushed_to_dash_col = headers.index("pushed_to_dash") if "pushed_to_dash" in headers else None
         row_pushed = False
         if pushed_to_dash_col is not None:
-            val = model.index(row, pushed_to_dash_col).data(Qt.ItemDataRole.DisplayRole)
+            val = model.index(row, pushed_to_dash_col).data(Qt.DisplayRole)
             if str(val).lower() in ("true", "t", "1", "yes"):
                 row_pushed = True
 
-        # Check if row is rejected anywhere
-        row_rejected = False
-        for c in range(col_count):
-            cell_text = model.index(row, c).data(Qt.ItemDataRole.DisplayRole)
-            if cell_text and "Rejected" in str(cell_text):
-                row_rejected = True
-                break
+        # Check row-level rejected
+        row_rejected = any(
+            "rejected" in str(model.index(row, c).data(Qt.DisplayRole)).lower()
+            for c in range(col_count)
+        )
 
-        # Priority coloring rules
+        # Apply priority coloring
         if row_pushed:
-            option.backgroundBrush = QColor(173, 216, 230)  # Light blue
-            return
+            option.backgroundBrush = QBrush(QColor(173, 216, 230))  # light blue
+        elif row_rejected:
+            option.backgroundBrush = QBrush(QColor("red"))
 
-        if row_rejected:
-            option.backgroundBrush = QColor("red")
-            return
-
-        # Otherwise color cell individually
-        text = index.data(Qt.ItemDataRole.DisplayRole)
-        if not text:
-            return
-
-        text = str(text)
-
-        if "Failed" in text:
-            option.backgroundBrush = QColor("lightcoral")
-        elif "Issue" in text:
-            option.backgroundBrush = QColor("orange")
-        elif "Resolved" in text:
-            option.backgroundBrush = QColor("lightgreen")
-        else:
-            option.backgroundBrush = QColor("white")
+        # Call the original paint method
+        super().paint(painter, option, index)
 
 
 
@@ -102,12 +78,11 @@ class TopoAdminPage(QWidget):
         self.conn = None
         self.survey_id_col_index = None
         self.worker = None
-        self.is_refreshing = False  # FIX: Prevent recursive refresh
+        self.is_refreshing = False
         self.rejection_comment = None
 
-        # FIX: Store actual table widgets, not containers
-        self.table_widgets = {}  # Maps tab_name -> actual QTableWidget
-        self.filter_inputs = {}  # Maps tab_name -> QLineEdit for filters
+        self.table_widgets = {}  # tab_name -> QTableWidget
+        self.filter_inputs = {}  # tab_name -> QLineEdit
 
         self.table_names = {
             "High Level Planner": "topo_qc.v_high_level_planner",
@@ -119,44 +94,123 @@ class TopoAdminPage(QWidget):
             "Batch Ready": "topo_qc.topo_batch_ready",
         }
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(50, 50, 50, 50)
-        layout.setSpacing(20)
+        self.setStyleSheet("""
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
 
-        label = QLabel("Topo QC Admin")
-        label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        label.setAlignment(Qt.AlignCenter)
+            QLabel#SubtitleLabel {
+                font-size: 15px;
+                color: #5D6D7E;
+                font-style: italic;
+                padding-bottom: 15px;
+            }
 
+            QTableWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                gridline-color: #D6DBDF;
+                selection-background-color: #AED6F1;
+                selection-color: #1B2631;
+                alternate-background-color: #F8F9F9;
+            }
+
+            QHeaderView::section {
+                background-color: #D6EAF8;
+                color: #154360;
+                font-weight: bold;
+                font-size: 14px;
+                border: 1px solid #AED6F1;
+                padding: 6px;
+            }
+
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+
+            QPushButton#GreenButton {
+                background-color: #28A745;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 10px;
+                border-radius: 8px;
+            }
+            QPushButton#GreenButton:hover {
+                background-color: #218838;
+            }
+        """)
+
+        # === Main Layout ===
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(20)
+
+        # Title
+        title_label = QLabel("Topo QC Admin")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # Subtitle / instruction
+        subtitle_label = QLabel("Manage and review surveys, batch logs, and QC issues from this panel.")
+        subtitle_label.setObjectName("SubtitleLabel")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        subtitle_label.setWordWrap(True)
+        main_layout.addWidget(subtitle_label)
+
+        # Return button (top, under title)
+        back_btn_layout = QHBoxLayout()
+        back_btn_layout.addStretch()
+        self.back_button = QPushButton("Return to Menu")
+        self.back_button.setObjectName("ReturnButton")
+        self.back_button.clicked.connect(go_back)
+        back_btn_layout.addWidget(self.back_button)
+        back_btn_layout.addStretch()
+        main_layout.addLayout(back_btn_layout)
+
+        # Tabs
         self.tabs = QTabWidget()
         self.update_mode = None
 
-        # Create tabs and tables
         for tab_name, db_table in self.table_names.items():
             tab = QWidget()
             tab_layout = QVBoxLayout()
 
-            # Create table and store direct reference
+            # Create table and filter
             table_widget, filter_input = self.create_table_widget(db_table)
             tab_layout.addWidget(filter_input)
             tab_layout.addWidget(table_widget)
 
-            # FIX: Store direct reference to table
             self.table_widgets[tab_name] = table_widget
             self.filter_inputs[tab_name] = filter_input
 
-            # Add buttons for specific tabs
+            # Action buttons for specific tabs
             if tab_name == "Failed Topo Surveys For Review":
                 buttons_layout = QHBoxLayout()
                 buttons_layout.setSpacing(20)
                 buttons_layout.setAlignment(Qt.AlignLeft)
 
                 self.descalate_button = QPushButton("Descalate Failed → Issue")
-                self.descalate_button.setFixedSize(200, 40)
+                self.descalate_button.setObjectName("GreenButton")
                 self.descalate_button.clicked.connect(self.descalate_failed_clicked)
                 buttons_layout.addWidget(self.descalate_button)
 
                 self.escalate_button = QPushButton("Escalate Failed → Rejection")
-                self.escalate_button.setFixedSize(200, 40)
+                self.escalate_button.setObjectName("GreenButton")
                 self.escalate_button.clicked.connect(self.confirm_rejection_clicked)
                 buttons_layout.addWidget(self.escalate_button)
 
@@ -164,23 +218,17 @@ class TopoAdminPage(QWidget):
 
             if tab_name == "Rejected Topo Surveys":
                 self.rejected_confirm_button = QPushButton("Confirm Rejections")
-                self.rejected_confirm_button.setFixedSize(200, 40)
+                self.rejected_confirm_button.setObjectName("GreenButton")
                 self.rejected_confirm_button.clicked.connect(self.confirm_rejection_clicked)
                 tab_layout.addWidget(self.rejected_confirm_button)
 
             tab.setLayout(tab_layout)
             self.tabs.addTab(tab, tab_name)
 
-        back_button = QPushButton("Back")
-        back_button.setFixedSize(100, 30)
-        back_button.clicked.connect(go_back)
-
-        layout.addWidget(label)
-        layout.addWidget(self.tabs)
-        layout.addWidget(back_button)
-        self.setLayout(layout)
-
-        self.tabs.currentChanged.connect(self.on_tab_changed)
+        main_layout.addWidget(self.tabs)
+        self.setLayout(main_layout)
+        self.setWindowTitle("Topo QC Admin")
+        self.resize(1000, 650)
 
     def on_tab_changed(self, index):
         """Called whenever the user switches tabs."""
@@ -195,8 +243,8 @@ class TopoAdminPage(QWidget):
 
         # FIX: Direct access to table widget
         table = self.table_widgets.get(tab_name)
-        table.setItemDelegate(StatusColorDelegate(table))
-
+        delegate = StatusColorDelegate(table)
+        table.setItemDelegate(delegate)
 
     def showEvent(self, event):
         """Called automatically whenever the widget becomes visible."""
@@ -426,7 +474,6 @@ class TopoAdminPage(QWidget):
 
     def refresh_all_tabs(self):
         """Refresh all table tabs by reloading their data"""
-        # FIX: Prevent recursive refresh
         if self.is_refreshing:
             return
 
@@ -434,7 +481,6 @@ class TopoAdminPage(QWidget):
 
         try:
             for tab_name, db_table in self.table_names.items():
-                # FIX: Direct access to table
                 table = self.table_widgets.get(tab_name)
                 if not table:
                     continue
@@ -453,7 +499,7 @@ class TopoAdminPage(QWidget):
                     table.setRowCount(0)
                     table.setColumnCount(0)
 
-                    # Reload table
+                    # Set up table
                     table.setColumnCount(len(columns))
                     table.setRowCount(len(rows))
                     table.setHorizontalHeaderLabels([self.format_column_header(c) for c in columns])
@@ -463,50 +509,29 @@ class TopoAdminPage(QWidget):
                     for col_idx in range(len(columns)):
                         table.horizontalHeader().setSectionResizeMode(col_idx, QHeaderView.ResizeMode.ResizeToContents)
 
-                    if db_table.endswith("rejected_topo_surveys") or db_table.endswith("failed_topo_surveys"):
-                        try:
-                            self.survey_id_col_index = columns.index("survey_id")
-                        except ValueError:
-                            logging.error("survey_id column not found")
-                            self.survey_id_col_index = None
-
-                    qc_folder_col_index = None
-                    try:
-                        qc_folder_col_index = columns.index("qc_folder")
-                    except ValueError:
-                        pass
-
-                    overdue_col_index = None
-                    if "overdue" in columns:
-                        overdue_col_index = columns.index("overdue")
-
+                    # Column indices
                     qc_folder_col_index = columns.index("qc_folder") if "qc_folder" in columns else None
-
-                    # Make all column names lowercase and stripped
-                    normalized_columns = [str(col).strip().lower() for col in columns]
-
-                    # Find index if it exists
-                    pushed_to_dash_col_index = normalized_columns.index(
-                        "pushed_to_dash") if "pushed_to_dash" in normalized_columns else None
+                    overdue_col_index = columns.index("overdue") if "overdue" in columns else None
+                    normalized_columns = [str(c).strip().lower() for c in columns]
+                    pushed_to_dash_col_index = (
+                        normalized_columns.index("pushed_to_dash") if "pushed_to_dash" in normalized_columns else None
+                    )
 
                     for r_idx, row in enumerate(rows):
-
                         highlight_row_red = False
-                        highlight_row_blue = False  # NEW
+                        highlight_row_blue = False
 
-                        # Check rejected from qc folder column
+                        # Row-level checks
                         if qc_folder_col_index is not None:
                             qc_value = str(row[qc_folder_col_index]).lower()
                             if "rejected" in qc_value:
                                 highlight_row_red = True
 
-                        # Check overdue
                         if overdue_col_index is not None:
                             overdue_value = str(row[overdue_col_index]).lower()
-                            if overdue_value == 'true':
+                            if overdue_value == "true":
                                 highlight_row_red = True
 
-                        # NEW: Check pushed_to_dash
                         if pushed_to_dash_col_index is not None:
                             pushed_value = str(row[pushed_to_dash_col_index]).lower()
                             if pushed_value in ("true", "t", "1", "yes"):
@@ -516,26 +541,26 @@ class TopoAdminPage(QWidget):
                             item = QTableWidgetItem(str(value))
                             flags = item.flags() & ~Qt.ItemFlag.ItemIsEditable
 
-                            # Priority coloring:
+                            # Row-level coloring priority
                             if highlight_row_blue:
-                                # Entire row light blue
-                                item.setBackground(QColor("blue"))  # light blue
+                                item.setBackground(QColor("lightblue"))
                                 flags &= ~Qt.ItemFlag.ItemIsSelectable
-
                             elif highlight_row_red:
-                                # Entire row red
                                 item.setBackground(QColor("red"))
                                 flags &= ~Qt.ItemFlag.ItemIsSelectable
-
-                            # Otherwise cell-level logic:
-                            elif "rejected" in str(value).lower():
-                                item.setBackground(QColor("red"))
-                            elif "Failed" in str(value):
-                                item.setBackground(QColor("lightcoral"))
-                            elif "issue" in str(value).lower():
-                                item.setBackground(QColor("orange"))
-                            elif "resolved" in str(value).lower():
-                                item.setBackground(QColor("lightgreen"))
+                            else:
+                                # Cell-level coloring
+                                val_lower = str(value).lower()
+                                if "rejected" in val_lower:
+                                    item.setBackground(QColor("red"))
+                                elif "failed" in val_lower:
+                                    item.setBackground(QColor("lightcoral"))
+                                elif "issue" in val_lower:
+                                    item.setBackground(QColor("orange"))
+                                elif "resolved" in val_lower:
+                                    item.setBackground(QColor("lightgreen"))
+                                else:
+                                    item.setBackground(QColor("white"))
 
                             item.setFlags(flags)
                             table.setItem(r_idx, c_idx, item)
@@ -543,5 +568,6 @@ class TopoAdminPage(QWidget):
                 except Exception as e:
                     logging.error(f"Error refreshing {tab_name}: {e}", exc_info=True)
                     QMessageBox.critical(self, "Refresh Error", f"Failed to refresh {tab_name}:\n{e}")
+
         finally:
             self.is_refreshing = False

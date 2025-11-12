@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QPushButton, QWidget, QListWidget, QHBoxLayout, QMessageBox, \
-    QFileDialog, QListWidgetItem
+    QFileDialog, QListWidgetItem, QFrame, QGroupBox
 
 from dependencies.system_paths import INTERIM_SURVEY_PATHS
 from qc_application.utils.query_database import query_database
@@ -14,48 +14,159 @@ from datetime import datetime
 class QCPage(QWidget):
     def __init__(self, go_back):
         super().__init__()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(15)
 
-        self.setLayout(layout)
+        # === GLOBAL PAGE LAYOUT ===
+        main_layout = QVBoxLayout(self)
+        main_layout.setAlignment(Qt.AlignTop)
+        main_layout.setContentsMargins(40, 30, 40, 30)
+        main_layout.setSpacing(25)
 
-        # Inputs
-        self.input_label = QLabel("Select Input Text Files:")
+        # === TITLE ===
+        title = QLabel("Automated QC Tool")
+        title.setAlignment(Qt.AlignCenter)
+        title.setObjectName("TitleLabel")
+        main_layout.addWidget(title)
+
+        # === SUBTITLE / DESCRIPTION ===
+        subtitle = QLabel("Select input files and run QC to validate data integrity.")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setObjectName("SubtitleLabel")
+        main_layout.addWidget(subtitle)
+
+        # === RETURN / BACK BUTTON UNDER TITLE ===
+        return_btn_layout = QHBoxLayout()
+        return_btn_layout.addStretch()
+
+        self.return_button = QPushButton("Return to QC Menu")
+        self.return_button.setObjectName("ReturnButton")
+        self.return_button.clicked.connect(go_back)
+        self.return_button.setFixedWidth(200)
+        return_btn_layout.addWidget(self.return_button)
+
+        return_btn_layout.addStretch()
+        main_layout.addLayout(return_btn_layout)
+
+        # === FILE SELECTION SECTION ===
+        file_group = QGroupBox("Input .tip.txt Files")
+        file_layout = QVBoxLayout()
+        file_layout.setSpacing(10)
+
         self.input_list = QListWidget()
-        self.input_add_button = QPushButton("Add Files")
-        self.input_remove_button = QPushButton("Remove Selected")
+        self.input_list.setFixedHeight(220)
+        self.input_list.setStyleSheet("""
+            QListWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                padding: 4px;
+            }
+        """)
+        file_layout.addWidget(self.input_list)
 
+        # Add/Remove Buttons
+        file_buttons = QHBoxLayout()
+        file_buttons.setSpacing(10)
 
+        add_button = self._styled_button("Add Files", self.add_input_files)
+        remove_button = self._styled_button("Remove Selected", self.remove_selected_files)
+        file_buttons.addWidget(add_button)
+        file_buttons.addWidget(remove_button)
+        file_layout.addLayout(file_buttons)
+
+        file_group.setLayout(file_layout)
+        main_layout.addWidget(file_group)
+
+        # === PROCESSING STATUS LABEL ===
         self.processing_label = QLabel("")
         self.processing_label.setAlignment(Qt.AlignCenter)
         self.processing_label.setVisible(False)
+        self.processing_label.setStyleSheet("color: #5D6D7E; font-style: italic;")
+        main_layout.addWidget(self.processing_label)
 
-        self.run_button = QPushButton("Run QC Script")
+        # === ACTION SECTION (Run QC) ===
+        action_section = QFrame()
+        action_layout = QHBoxLayout()
+        action_layout.setAlignment(Qt.AlignCenter)
 
-        # Connect
-        self.input_add_button.clicked.connect(self.add_input_files)
-        self.input_remove_button.clicked.connect(self.remove_selected_files)
+        self.run_button = QPushButton("▶ Run QC Script")
         self.run_button.clicked.connect(self.run_qc_script)
+        self.run_button.setFixedWidth(250)
+        self.run_button.setStyleSheet("""
+            QPushButton {
+                background-color: #28A745;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        action_layout.addWidget(self.run_button)
+        action_section.setLayout(action_layout)
+        main_layout.addWidget(action_section)
 
-        # Add to layout
-        layout.addWidget(self.input_label)
-        layout.addWidget(self.input_list)
+        # === FILLER SPACER ===
+        main_layout.addStretch()
 
-        btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.input_add_button)
-        btn_layout.addWidget(self.input_remove_button)
-        layout.addLayout(btn_layout)
+        # === GLOBAL STYLESHEET FOR TITLE, SUBTITLE, RETURN BUTTON ===
+        self.setStyleSheet("""
+            /* === Title Styling === */
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
 
+            /* === Subtitle Styling === */
+            QLabel#SubtitleLabel {
+                font-size: 16px;
+                color: #5D6D7E;
+                font-style: italic;
+            }
 
-        layout.addWidget(self.processing_label)
-        layout.addWidget(self.run_button)
+            /* === Primary Orange Button (Return / Back) === */
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+        """)
 
-        self.back_button = QPushButton("Back")
-        self.back_button.setFixedSize(100, 30)
-        self.back_button.clicked.connect(go_back)
+        self.setLayout(main_layout)
+        self.setWindowTitle("Automated QC Tool")
+        self.resize(800, 600)
 
-        layout.addWidget(self.back_button)
+    # === Helper for Consistent Button Styling ===
+    def _styled_button(self, label, callback):
+        button = QPushButton(label)
+        button.clicked.connect(callback)
+        button.setFixedHeight(45)
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #D6EAF8;
+                border: 1px solid #AED6F1;
+                color: #154360;
+                font-weight: 500;
+                font-size: 15px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #AED6F1;
+            }
+        """)
+        return button
+
 
     def add_input_files(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Input Text Files", "", "Text Files (*.txt)")

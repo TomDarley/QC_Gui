@@ -1,6 +1,7 @@
 import logging
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton, QMessageBox, \
+    QHBoxLayout, QHeaderView
 from PyQt5.QtCore import Qt
 from sqlalchemy import text
 
@@ -14,38 +15,140 @@ class SandsDataPage(QWidget):
         self.conn = establish_connection()
         self.go_back = go_back
 
+        self.setStyleSheet("""
+            /* === Title Styling === */
+            QLabel#TitleLabel {
+                font-size: 26px;
+                font-weight: 600;
+                color: #1B2631;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #5DADE2;
+            }
 
-        # Layout
-        layout = QVBoxLayout()
-        layout.setContentsMargins(50, 50, 50, 50)
-        layout.setSpacing(20)
+            /* === Subtitle / Description Styling === */
+            QLabel#SubtitleLabel {
+                font-size: 16px;
+                color: #5D6D7E;
+                font-style: italic;
+            }
 
-        # Title
-        label = QLabel("SANDs Data Creator")
-        label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        label.setAlignment(Qt.AlignCenter)
+            /* === Table Styling === */
+            QTableWidget {
+                background-color: #FBFCFC;
+                border: 1px solid #D6DBDF;
+                border-radius: 6px;
+                gridline-color: #D6DBDF;
+                selection-background-color: #AED6F1;
+                selection-color: #1B2631;
+                alternate-background-color: #F8F9F9;
+            }
 
-        # Table
+            QHeaderView::section {
+                background-color: #D6EAF8;
+                color: #154360;
+                font-weight: bold;
+                font-size: 14px;
+                border: 1px solid #AED6F1;
+                padding: 6px;
+            }
+
+            QTableWidget::item {
+                padding: 6px;
+            }
+
+            /* === Default Buttons === */
+            QPushButton {
+                background-color: #D6EAF8;
+                border: 1px solid #AED6F1;
+                color: #154360;
+                font-weight: 500;
+                font-size: 14px;
+                border-radius: 6px;
+                padding: 8px 14px;
+            }
+
+            QPushButton:hover {
+                background-color: #AED6F1;
+            }
+
+            /* === Primary Orange Buttons (Return) === */
+            QPushButton#ReturnButton {
+                background-color: #E67E22;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            QPushButton#ReturnButton:hover {
+                background-color: #CA6F1E;
+            }
+
+            /* === Green Button (Create SANDs Data) === */
+            QPushButton#GreenButton {
+                background-color: #27AE60;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            QPushButton#GreenButton:hover {
+                background-color: #229954;
+            }
+        """)
+
+        # === Main layout ===
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(20)
+
+        # === Title ===
+        title_label = QLabel("SANDs Data Creator")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # === Subtitle / description under title ===
+        subtitle_label = QLabel("Use this tool to create and manage SANDs data.")
+        subtitle_label.setObjectName("SubtitleLabel")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(subtitle_label)
+
+        # === Return Button (under title/subtitle) ===
+        return_btn_layout = QHBoxLayout()
+        return_btn_layout.addStretch()
+        self.return_button = QPushButton("Return to QC Menu")
+        self.return_button.setObjectName("ReturnButton")
+        self.return_button.clicked.connect(self.go_back)
+        return_btn_layout.addWidget(self.return_button)
+        return_btn_layout.addStretch()
+        main_layout.addLayout(return_btn_layout)
+
+        # === Table ===
         self.table_widget = QTableWidget()
+        self.table_widget.setColumnCount(2)
+        self.table_widget.setHorizontalHeaderLabels(["Column 1", "Column 2"])
         self.table_widget.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_widget.setSelectionMode(QTableWidget.SingleSelection)
+        self.table_widget.horizontalHeader().setStretchLastSection(False)
+        self.table_widget.resizeColumnsToContents()
+        self.table_widget.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        main_layout.addWidget(self.table_widget)
 
-        self.load_table_data()
-
-        # Buttons
+        # === Bottom Button (Create SANDs Data) ===
+        bottom_btn_layout = QHBoxLayout()
+        bottom_btn_layout.addStretch()
         self.create_sands_button = QPushButton("Create SANDs Data")
+        self.create_sands_button.setObjectName("GreenButton")
         self.create_sands_button.clicked.connect(self.create_sands_data)
+        bottom_btn_layout.addWidget(self.create_sands_button)
+        bottom_btn_layout.addStretch()
+        main_layout.addLayout(bottom_btn_layout)
 
-        back_button = QPushButton("Back")
-        back_button.clicked.connect(self.go_back)
-
-        # Assemble layout
-        layout.addWidget(label)
-        layout.addWidget(self.table_widget)
-        layout.addWidget(self.create_sands_button)
-        layout.addWidget(back_button)
-
-        self.setLayout(layout)
+        self.setLayout(main_layout)
         self.setWindowTitle("SANDs Data Page")
         self.resize(600, 400)
 
