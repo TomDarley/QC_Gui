@@ -1208,8 +1208,8 @@ def check_photos(survey_profiles: Set[str],survey_completion_date: str,input_tex
 
     # If there are issues with dates, skip profile checks
     if photo_check_results:
-        logger.info("Photo date issues found, skipping profile checks.")
-        return photo_check_results
+        logger.info("Photo date issues found.")
+        #return photo_check_results
 
     # Check photo profiles
     photo_profile_check = check_photo_profiles(found_photos, survey_profiles)
@@ -1268,13 +1268,25 @@ def run_photo_checks(selected_interim_lines, survey_completion_date, input_text_
     photo_status = "Pass"
     photo_comments = "Auto Checked"
 
+
+
     if photo_checks is None:
         photo_status = "Issue"
         photo_comments = "No photos folder or photos found."
         logging.warning(photo_comments)
     elif len(photo_checks) > 0:
-        # Flatten the list of all issues into a single string
-        all_issues_flat = list(chain.from_iterable(photo_checks.values()))
+        # Get all values
+        values = list(photo_checks.values())
+
+        # Flatten: if value is list, keep elements; if value is str, keep as single element
+        all_issues_flat = []
+        for v in values:
+            if isinstance(v, list):
+                all_issues_flat.extend(v)
+            elif isinstance(v, str):
+                all_issues_flat.append(v)
+
+        # Join into a single string
         all_issues_str = ", ".join(all_issues_flat)
 
         photo_status = "Issue"
@@ -1633,8 +1645,7 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
         "data_baseline_xyz_txt_ic": "Missing, could not be found",
         "data_raster_grid": "Issue",
         "data_raster_grid_ic": "Missing",
-        "bl_profile_photos": "Issue",
-        "bl_profile_photos_ic": "Missing, could not be found",
+
         "checks_cd_ascii_created_split": "false",
 
     })
