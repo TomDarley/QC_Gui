@@ -1026,13 +1026,15 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
     gen_date_checked = datetime.now().strftime("%Y-%m-%d")
     gen_name = "Auto"
 
+    # make sure no failed
+
     # Define the common metadata dictionary
     survey_meta = {
         "survey_unit": extracted_cell + extracted_survey_unit,
         "survey_type": survey_type,
         "completion_date": survey_completion_date,
         "survey_received": survey_completion_date,
-        "delivery_reference": "Where I get this",
+        "delivery_reference": extracted_survey_unit,
         "gen_metadata": check_metadata(input_text),
         "gen_metadata_ic": "Auto Checked" if check_metadata(input_text) == "Pass" else "Missing",
         "gen_survey_report": check_survey_report(input_text)[0],
@@ -1049,7 +1051,7 @@ def extract_survey_meta(input_text, extracted_survey_unit, survey_completion_dat
         "checks_pl_point_spacing": get_overspacing_status(lengths_over_spec),
         "checks_pl_point_spacing_ic": f"{len(lengths_over_spec)} over spacing found",
         "checks_pl_seaward_limit": get_made_depth_status(depth_checks),
-        "checks_pl_seaward_limit_ic": f"{len(depth_checks)} profiles failed to make depth",
+        "checks_pl_seaward_limit_ic": f"{len(depth_checks)} profiles did not make depth",
         "checks_pl_offline_variation": get_offline_points_status(offline_points),
         "checks_pl_offline_variation_ic": f"{len(offline_points)} found offline",
         "qc_folder": set_workspace,
@@ -1189,6 +1191,7 @@ def check_photos(survey_profiles: Set[str],survey_completion_date: str,input_tex
     found_photos = find_photos(input_text_path)
     if not found_photos:
         logger.warning("No photos found in the directory.")
+        photo_check_results["Incorrect Photo Directoy"] = "Photos missing date in filename"
         return photo_check_results
 
     logger.info(f"Found photos: {list(found_photos.values())}")
@@ -1234,6 +1237,7 @@ def run_photo_checks(selected_interim_lines, survey_completion_date, input_text_
         dict: The updated survey_meta dictionary.
     """
     logging.info("Checking for photos in the Photography folder...")
+    print(selected_interim_lines, survey_completion_date, input_text_file, is_baseline_survey)
 
     profile_field = "REGIONAL_N"
     unique_profiles = set()

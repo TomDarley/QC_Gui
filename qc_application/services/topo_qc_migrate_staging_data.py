@@ -251,7 +251,9 @@ class MigrateStagingToLive:
                             (profile_id, date, chainage, elevation, sequence)
                             VALUES (:profile_id, :date, :chainage, :elevation, :sequence)
                         """)
-                        profile_data = self.all_mp_data[self.all_mp_data['profile_id'] == profile_id]
+                        profile_data = self.all_mp_data[self.all_mp_data['profile_id'] == profile_id].copy()
+                        profile_data['sequence'] = profile_data['sequence'].apply(
+                            lambda x: int(x) if pd.notna(x) else None)
                         conn.execute(insert_profile_sql, profile_data.to_dict(orient='records'))
 
                 # 3) INSERT NEW TOPO DATA
@@ -298,7 +300,3 @@ class MigrateStagingToLive:
         except Exception as e:
             logging.error(f"Database update failed. All changes rolled back. Error: {e}")
             return False
-
-
-f = MigrateStagingToLive()
-f.migrate_data()

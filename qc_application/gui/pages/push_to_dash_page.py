@@ -2,7 +2,7 @@ import logging
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QPushButton, QMessageBox,
-    QHeaderView, QTableWidgetItem, QHBoxLayout
+    QHeaderView, QTableWidgetItem, QHBoxLayout, QProgressDialog, QApplication
 )
 from sqlalchemy import text
 import pandas as pd
@@ -160,19 +160,29 @@ class PushToDashPage(QWidget):
                 self.table.setItem(row, col, QTableWidgetItem(str(df.iat[row, col])))
 
     def push_to_dash(self):
-
         if self.table.rowCount() == 0:
             QMessageBox.warning(self, "No Data", "There is no data to push to dash.")
             return
 
-
-
-        confirm = QMessageBox.question(self, "Confirm Push", "Are you sure you want to push to dash?\nThis will clear all staging data and cannot be undone.",
-                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Push",
+            "Are you sure you want to push to dash?\nThis will clear all staging data and cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
         if confirm != QMessageBox.Yes:
             return
 
+        # Create progress/loading dialog
+        progress = QProgressDialog("Pushing data to dash...", None, 0, 0, self)
+        progress.setWindowTitle("Please wait")
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setCancelButton(None)
+        progress.show()
+
         try:
+            QApplication.processEvents()  # ensures dialog is shown immediately
 
             f = MigrateStagingToLive()
             f.migrate_data()
@@ -183,6 +193,9 @@ class PushToDashPage(QWidget):
         except Exception as e:
             logging.error(f"Push to dash failed: {e}")
             QMessageBox.critical(self, "Error", "Push to dash failed.")
+
+        finally:
+            progress.close()
 
 
     def showEvent(self, event):

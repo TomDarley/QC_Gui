@@ -839,14 +839,14 @@ class DataHandler:
                 return
 
             issue_map = {
-                "Excessive Over Spacing": ["checks_pl_point_spacing", "checks_pl_point_spacing_c"],
+                "Excessive Over Spacing": ["checks_pl_point_spacing", "checks_pl_point_spacing_ic"],
                 "Survey Does Not Reach Master Profile Landward Limit": [
                     "checks_pl_profile_start_position",
-                    "checks_pl_profile_start_position_c"
+                    "checks_pl_profile_start_position_ic"
                 ],
                 "Survey Does Not Reach Seaward Limit": [
                     "checks_pl_seaward_limit",
-                    "checks_pl_seaward_limit_c"
+                    "checks_pl_seaward_limit_ic"
                 ],
             }
 
@@ -1152,13 +1152,13 @@ class DataHandler:
 
                 if not all_excessive:
                     db_fields_to_update.append("checks_pl_point_spacing")
-                    db_fields_c_to_update.append("checks_pl_point_spacing_c")
+                    db_fields_c_to_update.append("checks_pl_point_spacing_cc")
                 if not all_landward:
                     db_fields_to_update.append("checks_pl_profile_start_position")
-                    db_fields_c_to_update.append("checks_pl_profile_start_position_c")
+                    db_fields_c_to_update.append("checks_pl_profile_start_position_cc")
                 if not all_seaward:
                     db_fields_to_update.append("checks_pl_seaward_limit")
-                    db_fields_c_to_update.append("checks_pl_seaward_limit_c")
+                    db_fields_c_to_update.append("checks_pl_seaward_limit_cc")
 
                 for db_field, db_field_c in zip(db_fields_to_update, db_fields_c_to_update):
 
@@ -1177,7 +1177,7 @@ class DataHandler:
                         update_query = text(f"""
                                                UPDATE topo_qc.qc_log
                                                SET {db_field} = 'Resolved',
-                                                   {db_field_c} = 'Fixed by Profile Viewer Tool'
+                                                   {db_field_c} = 'Checked/Fixed by Profile Viewer Tool'
                                                WHERE survey_unit = :survey_unit
                                                AND completion_date = :date;
                                            """)
@@ -1484,9 +1484,9 @@ class DataHandler:
                 survey_id = row[0]
 
                 possible_updated_fields = ["checks_pl_point_spacing",
-                                           "checks_pl_point_spacing_c",
+                                           "checks_pl_point_spacing_ic",
                                            "checks_pl_profile_start_position",
-                                           "checks_pl_profile_start_position_c",
+                                           "checks_pl_profile_start_position_ic",
                                            "checks_pl_seaward_limit",
                                            "checks_pl_seaward_limit"
                                            ]
@@ -1504,7 +1504,7 @@ class DataHandler:
                 print(df_original_values)
                 for row in df_original_values.itertuples():
                     print(row)
-                    issue_comment_field = row.issue_field + "_c"
+                    issue_comment_field = row.issue_field + "_ic"
 
                     # reset the topo_survey table field to the original value
                     reset_field = text(
@@ -2408,8 +2408,8 @@ class ProfileQCApp(QWidget):
 
         ]
 
-        issue_map = {"Excessive Over Spacing":["checks_pl_point_spacing", "checks_pl_point_spacing_c"],
-                     "Survey Does Not Reach Master Profile Landward Limit":["checks_pl_profile_start_position","checks_pl_profile_start_position_c"],
+        issue_map = {"Excessive Over Spacing":["checks_pl_point_spacing", "checks_pl_point_spacing_ic"],
+                     "Survey Does Not Reach Master Profile Landward Limit":["checks_pl_profile_start_position","checks_pl_profile_start_position_ic"],
                      "Survey does Not Reach Seaward Limit":["checks_pl_seaward_limit","checks_pl_seaward_limit"],
                     }
 

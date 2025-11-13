@@ -5,6 +5,10 @@ import traceback
 from datetime import datetime
 from qc_application.utils.database_connection import establish_connection
 from sqlalchemy import text
+from qc_application.config.app_settings import AppSettings
+settings = AppSettings()
+USER = settings.get("user")
+
 
 class SendBatchDataLocal:
     def __init__(self, batch_folders, remote_base_path):
@@ -54,7 +58,7 @@ class SendBatchDataLocal:
                         WHERE survey_id = :survey_id
                     """),
                     {
-                        "sender": "auto",
+                        "sender": f'{USER}', # from settings
                         "sent_date": datetime.now(),
                         "survey_id": survey_id
                     }

@@ -85,13 +85,13 @@ class TopoAdminPage(QWidget):
         self.filter_inputs = {}  # tab_name -> QLineEdit
 
         self.table_names = {
-            "High Level Planner": "topo_qc.v_high_level_planner",
             "Survey Log": "topo_qc.qc_log",
+            "Issue History": "topo_qc.topo_issue_history",
             "Failed Topo Surveys For Review": "topo_qc.failed_topo_surveys",
             "Rejected Topo Surveys": "topo_qc.rejected_topo_surveys",
-            "Issue History": "topo_qc.topo_issue_history",
-            "Batch Log": "topo_qc.batch_log",
             "Batch Ready": "topo_qc.topo_batch_ready",
+            "Batch Log": "topo_qc.batch_log",
+            "High Level Planner": "topo_qc.v_high_level_planner",
         }
 
         self.setStyleSheet("""
@@ -184,6 +184,7 @@ class TopoAdminPage(QWidget):
 
         # Tabs
         self.tabs = QTabWidget()
+        self.tabs.currentChanged.connect(self.on_tab_changed)
         self.update_mode = None
 
         for tab_name, db_table in self.table_names.items():
