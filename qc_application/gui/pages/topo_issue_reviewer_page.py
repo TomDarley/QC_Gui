@@ -9,9 +9,8 @@ from PyQt5.QtWidgets import (
     QPushButton, QHeaderView, QComboBox, QTableWidgetItem, QMessageBox, QFrame
 )
 from sqlalchemy import text
-from qc_application.config.app_settings import AppSettings
 from qc_application.utils.database_connection import establish_connection
-
+from qc_application.config.app_settings import AppSettings
 
 settings = AppSettings()
 USER = settings.get("user")

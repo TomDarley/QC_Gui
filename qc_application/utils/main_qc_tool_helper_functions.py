@@ -170,7 +170,8 @@ def extract_survey_cell(input_path: str) -> Optional[str]:
     try:
         filename = os.path.basename(input_path)
         # Check if the filename has at least 2 characters before slicing
-        if len(filename) >= 2:
+        if len(filename) >= 10:
+            print(filename)
             return filename[:2]
         return None
     except (TypeError, IndexError):
@@ -528,9 +529,12 @@ def extract_interim_lines(survey_profile_lines_shp,workspace,extracted_cell,file
         logging.error(f"An unexpected error occurred: {e}")
         return None
 
-def create_offline_buffer_file_name(region, workspace, extracted_cell, file_friendly_survey_unit):
+def create_offline_buffer_file_name(
+    region: str, workspace: str, extracted_cell: str, file_friendly_survey_unit: str
+) -> str:
     """
-    Creates a standardized file path for an offline buffer shapefile based on a region's tolerance.
+    Creates a standardized file path for an offline buffer shapefile
+    based on a region-specific tolerance, with a sensible default.
 
     Args:
         region (str): The region identifier (e.g., 'TSW_IoS').
@@ -541,25 +545,31 @@ def create_offline_buffer_file_name(region, workspace, extracted_cell, file_frie
     Returns:
         str: The full path to the output shapefile.
     """
-    # Define a dictionary for region-specific tolerances
+    # Map single regions or tuples of regions to tolerances
     tolerance_map = {
-        ("TSW_IoS", "TSW_PCO"): 0.03
+        ("TSW_IoS", "TSW_PCO"): 0.03,
+        ("TSW_IoS",): 0.03,
+        ("TSW_PCO",): 0.03,
     }
 
-    # Check if the region is in the keys of the tolerance map.
-    # The .get() method returns a default value if the key isn't found.
-    tolerance = tolerance_map.get(tuple(sorted([region]))) or 0.1
+    # Default tolerance
+    tolerance = 0.1
+    for key, value in tolerance_map.items():
+        if region in key:
+            tolerance = value
+            break
 
-    # Log the tolerance value
-    logging.info(f"Offline tolerance set to {tolerance}m")
+    logging.info(f"Offline tolerance set to {tolerance} m")
 
-    # Construct the file name using a clean f-string
-    file_name = f"Buffer_{str(tolerance).replace('.', '')}m_{extracted_cell}{file_friendly_survey_unit}_Auto.shp"
+    # Format tolerance as two digits without leading zero for 0.03 → '03', 0.1 → '01'
+    tolerance_str = f"{int(tolerance * 100):02d}"  # 0.03*100=3 → '03', 0.1*100=10 → '10'?
 
-    # Use os.path.join for robust path creation
-    file_path = os.path.join(workspace, file_name)
+    # Adjust for default case: 0.1 → '01'
+    if tolerance == 0.1:
+        tolerance_str = "01"
 
-    return file_path
+    file_name = f"Buffer_{tolerance_str}m_{extracted_cell}{file_friendly_survey_unit}_Auto.shp"
+    return os.path.join(workspace, file_name)
 
 def create_offline_buffer(region, offline_line_buffer_path, selected_interim_lines):
     """
@@ -723,7 +733,6 @@ def create_distance_buffer(points_file_path, buffer_file_path, spacing_unit_erro
 
     logging.info(f"Spacing buffer created at: {buffer_file_path}")
 
-
 def check_points_lie_on_correct_profile_lines(points_file_path, offline_line_buffer_path):
     """
     Checks only points that intersect a buffer.
@@ -753,8 +762,6 @@ def check_points_lie_on_correct_profile_lines(points_file_path, offline_line_buf
 
     return True  # all intersecting points match (or no intersections exist)
 
-
-# --TODO this is untested.
 def spacing_check(df, spacing_unit_error):
     """
     Checks the distance between consecutive points within each unique profile
@@ -804,7 +811,6 @@ def spacing_check(df, spacing_unit_error):
 
     return over_spacing_df
 
-# --TODO this is untested.
 def check_made_depth(df, mlsw_value):
     """
     Checks if the lowest elevation for each profile is at or below the
@@ -826,8 +832,15 @@ def check_made_depth(df, mlsw_value):
 
     logging.info("Running Made Depth Checks:")
 
-    # Ensure Elevation is a float for accurate comparison
     df["Elevation"] = pd.to_numeric(df["Elevation"], errors='coerce')
+    df = df.dropna(subset=["Elevation"])  # remove any rows with non-numeric elevations
+
+    if df.empty:
+        logging.warning("No valid elevations to check. Returning empty DataFrame.")
+        return pd.DataFrame()
+
+
+
 
     # Ensure MLSW is numeric
     mlsw_value = pd.to_numeric(mlsw_value, errors='coerce')
@@ -852,6 +865,8 @@ def check_made_depth(df, mlsw_value):
 
     return failed_depth_profiles
 
+
+# TODO - ALL FUNCTIONS BELOW THIS POINT NEED ADDING TO UNIT TESTS
 def check_metadata(input_text):
     """
     Checks a directory for the presence of a file containing "Meta" in its name.
@@ -1628,24 +1643,20 @@ def run_baseline_checks(input_text_file, workspace, survey_meta, bool_baseline_s
     if not bool_baseline_survey:
         return None, None, None, None
 
-    # Initialize survey_meta with default failure states
+    # Initialize survey_meta with default failure states, note we dont include photos here as they are
+    # handled separately
+
     survey_meta.update({
         "bl_other_data": "Issue",
         "bl_other_data_ic": "Missing, could not be found",
-
         "bl_xyz_data": "Issue",
         "bl_xyz_data_ic": "Missing, could not be found",
         "bl_raster_data": "Issue",
         "bl_raster_data_ic": "Missing, could not be found",
-
-
-
-
         "data_baseline_xyz_txt": "Issue",
         "data_baseline_xyz_txt_ic": "Missing, could not be found",
         "data_raster_grid": "Issue",
         "data_raster_grid_ic": "Missing",
-
         "checks_cd_ascii_created_split": "false",
 
     })
