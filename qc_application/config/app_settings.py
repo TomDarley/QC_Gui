@@ -15,7 +15,7 @@ class AppSettings:
         "database": {
             "host": "localhost",
             "port": "5432",
-            "database": "qc_database",
+            "database": "qc_database_1",
             "user": "postgres",
             "password": "Plymouth_C0"
         },
@@ -24,7 +24,12 @@ class AppSettings:
         "user": "TD",
         "log_level": "INFO",
         "arcgis_pro_path": str(ARCGIS_PRO_PATH),
-        "arcgis_template_path": str(ARCGIS_TEMPLATE_PATH)
+        "arcgis_template_path": str(ARCGIS_TEMPLATE_PATH),
+        "ftp_host":"127.0.0.1",
+        "ftp_port":21,
+        "ftp_username":"TD",
+        "ftp_password":"Plymouth_C0",
+        "ftp_use_tls":False
 
 
 

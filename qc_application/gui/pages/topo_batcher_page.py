@@ -1,16 +1,24 @@
 import logging
+import os
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QPushButton, QMessageBox,
-    QHeaderView, QComboBox, QTableWidgetItem, QHBoxLayout
+    QHeaderView, QComboBox, QTableWidgetItem, QHBoxLayout, QProgressDialog
 )
 from sqlalchemy import text
 import pandas as pd
 
 from qc_application.services.topo_auto_batcher_file_checker_service import Auto_Batcher
-from qc_application.services.topo_auto_batcher_send_using_ftp_service import SendBatchDataLocal
+
+from qc_application.services.topo_qc_ftp_sender import FTPSender, update_qc_log
 from qc_application.utils.database_connection import establish_connection  # ✅ use new helper
+from qc_application.config.app_settings import AppSettings
+
+settings = AppSettings()
+
+
 
 
 # Set up logging once
@@ -18,6 +26,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 
 class BatcherPage(QWidget):
+
+    FTP_HOST = settings.get("ftp_host")
+    FTP_PORT = settings.get("ftp_port")
+    FTP_USERNAME = settings.get("ftp_username")
+    FTP_PASSWORD = settings.get("ftp_password")
+    FTP_USE_TLS = settings.get("ftp_use_tls")
+
+
+
+
+
+
+
     def __init__(self, go_back):
         super().__init__()
         self.table_name = "topo_qc.topo_batch_ready"
@@ -350,23 +371,109 @@ class BatcherPage(QWidget):
             logging.exception("Error creating batch folders")
             QMessageBox.critical(self, "Batch Folder Error", str(e))
 
+
     def send_batch_files_ftp(self):
         if not self.batched_folders:
             QMessageBox.warning(self, "No Batched Folders", "No batched folders to send.")
             return
 
         try:
+            # Ensure we have a list of folders
             if not isinstance(self.batched_folders, list):
                 batch_folders = list(self.batched_folders.items())
             else:
                 batch_folders = self.batched_folders
 
             logging.info(f"📤 Uploading: {batch_folders}")
-            sender = SendBatchDataLocal(batch_folders, r"C:\Users\darle\Desktop\Batch_Folder\Remote")
-            sender.send_folders()
-            logging.info("✅ Upload complete")
 
+            # Show a loader / progress dialog
+            loader = QProgressDialog("Uploading batch folders...", "Cancel", 0, len(batch_folders), self)
+            loader.setWindowTitle("Uploading")
+            loader.setWindowModality(Qt.WindowModal)
+            loader.setMinimumDuration(0)
+            loader.show()
+
+            if self.FTP_USE_TLS =='false':
+                self.FTP_USE_TLS = False
+            else:
+                self.FTP_USE_TLS = True
+
+            print(self.FTP_HOST,self.FTP_PORT,self.FTP_USERNAME,self.FTP_PASSWORD,self.FTP_PORT,self.FTP_USE_TLS)
+
+            # Create the FTP sender
+            ftp_sender = FTPSender(
+                host=self.FTP_HOST,
+                username=self.FTP_USERNAME,
+                password=self.FTP_PASSWORD,
+                port =self.FTP_PORT,
+                use_tls=False  # adjust if you want FTPS
+            )
+
+            # Upload each folder
+            ftp_sender.connect()
+            for i, (batch_id, local_folder) in enumerate(batch_folders, 1):
+
+                folder_name = os.path.basename(local_folder)
+
+                ftp_sender.upload_folder(
+                    local_folder,
+                    f"/remote_folder/{folder_name}"
+                )
+
+                loader.setValue(i)
+                if loader.wasCanceled():
+                    logging.warning("Upload canceled by user")
+                    break
+
+                # This updates the database to mark the batch as sent
+                update_qc_log(batch_id)
+
+            ftp_sender.disconnect()
+
+            loader.close()
+
+            logging.info("✅ Upload complete")
             self.load_table_data()
+
         except Exception as e:
             logging.exception("Error sending batch folders")
             QMessageBox.critical(self, "FTP Error", f"Error uploading batch folders:\n{e}")
+
+    #def send_batch_files_ftp(self):
+    #    if not self.batched_folders:
+    #        QMessageBox.warning(self, "No Batched Folders", "No batched folders to send.")
+    #        return
+#
+    #    try:
+    #        # Ensure we have a list of folders
+    #        if not isinstance(self.batched_folders, list):
+    #            batch_folders = list(self.batched_folders.items())
+    #        else:
+    #            batch_folders = self.batched_folders
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+#
+    #        logging.info(f"📤 Uploading: {batch_folders}")
+    #        sender = SendBatchDataLocal(batch_folders, r"C:\Users\darle\Desktop\Batch_Folder\Remote")
+    #        sender.send_folders()
+    #        logging.info("✅ Upload complete")
+#
+#
+#
+#
+#
+#
+#
+#
+#
+    #        self.load_table_data()
+#
+    #    except Exception as e:
+    #        logging.exception("Error sending batch folders")
+    #        QMessageBox.critical(self, "FTP Error", f"Error uploading batch folders:\n{e}")
+#

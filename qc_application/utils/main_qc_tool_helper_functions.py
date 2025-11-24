@@ -1471,7 +1471,7 @@ def aggregate_points_for_extent(workspace: str, tb_text_file: str) -> Optional[s
     logging.info(f"Attempting to create aggregated extent polygon at: {extent_path}")
 
     try:
-        aggregation_distance = 30  # Meters, based on a reasonable project-specific value
+        aggregation_distance = 10  # Meters, based on a reasonable project-specific value
 
         # Use named parameters for clarity
         arcpy.cartography.AggregatePoints(

@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QFormLayout,
-    QPushButton, QFileDialog, QMessageBox, QHBoxLayout, QFrame, QScrollArea, QWidget
+    QPushButton, QFileDialog, QMessageBox, QHBoxLayout,
+    QScrollArea, QWidget, QCheckBox
 )
 from PyQt5.QtCore import Qt
 from qc_application.config.app_settings import AppSettings
@@ -11,7 +12,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("⚙️ Application Settings")
         self.settings = AppSettings()
-        self.resize(500, 650)
+        self.resize(500, 700)
 
         # === MAIN LAYOUT ===
         main_layout = QVBoxLayout()
@@ -58,10 +59,7 @@ class SettingsDialog(QDialog):
         form_layout.addRow("User:", self.user_input)
         form_layout.addRow("Password:", self.pass_input)
 
-        self._style_inputs([
-            self.host_input, self.port_input, self.db_input,
-            self.user_input, self.pass_input
-        ])
+        self._style_inputs([self.host_input, self.port_input, self.db_input, self.user_input, self.pass_input])
 
         # ===== File Path Section =====
         path_label = QLabel("File Paths")
@@ -82,6 +80,30 @@ class SettingsDialog(QDialog):
         self._style_inputs([self.user_input_field])
         form_layout.addRow("User Name:", self.user_input_field)
 
+        # ===== FTP Section =====
+        ftp_label = QLabel("FTP Settings")
+        ftp_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #154360; margin-top: 20px;")
+        form_layout.addRow(ftp_label)
+
+        self.ftp_host_input = QLineEdit(self.settings.data.get("ftp_host", self.settings.DEFAULTS["ftp_host"]))
+        self.ftp_port_input = QLineEdit(str(self.settings.data.get("ftp_port", self.settings.DEFAULTS["ftp_port"])))
+        self.ftp_username_input = QLineEdit(
+            self.settings.data.get("ftp_username", self.settings.DEFAULTS["ftp_username"]))
+        self.ftp_password_input = QLineEdit(
+            self.settings.data.get("ftp_password", self.settings.DEFAULTS["ftp_password"]))
+        self.ftp_password_input.setEchoMode(QLineEdit.Password)
+        self.ftp_tls_checkbox = QCheckBox("Use TLS")
+        self.ftp_tls_checkbox.setChecked(self.settings.data.get("ftp_use_tls", self.settings.DEFAULTS["ftp_use_tls"]))
+
+        self._style_inputs([self.ftp_host_input, self.ftp_port_input, self.ftp_username_input, self.ftp_password_input])
+
+        form_layout.addRow("Host:", self.ftp_host_input)
+        form_layout.addRow("Port:", self.ftp_port_input)
+        form_layout.addRow("Username:", self.ftp_username_input)
+        form_layout.addRow("Password:", self.ftp_password_input)
+        form_layout.addRow("TLS Enabled:", self.ftp_tls_checkbox)
+
+        # === Finish scroll area ===
         scroll_area.setWidget(scroll_widget)
         main_layout.addWidget(scroll_area)
 
@@ -157,6 +179,13 @@ class SettingsDialog(QDialog):
         self.settings.data["arcgis_pro_path"] = self.arcgis_pro_input.text()
         self.settings.data["arcgis_template_path"] = self.arcgis_template_input.text()
         self.settings.data["user"] = self.user_input_field.text()
+
+        # FTP settings
+        self.settings.data["ftp_host"] = self.ftp_host_input.text()
+        self.settings.data["ftp_port"] = int(self.ftp_port_input.text()) if self.ftp_port_input.text().isdigit() else 21
+        self.settings.data["ftp_username"] = self.ftp_username_input.text()
+        self.settings.data["ftp_password"] = self.ftp_password_input.text()
+        self.settings.data["ftp_use_tls"] = self.ftp_tls_checkbox.isChecked()
 
         self.settings.save()
         QMessageBox.information(self, "✅ Saved", "Settings saved successfully.")

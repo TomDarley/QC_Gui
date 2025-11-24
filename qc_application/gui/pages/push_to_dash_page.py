@@ -7,8 +7,14 @@ from PyQt5.QtWidgets import (
 from sqlalchemy import text
 import pandas as pd
 
+from qc_application.services.generate_dash_raster_service import UploadToS3
 from qc_application.services.topo_qc_migrate_staging_data import MigrateStagingToLive
 from qc_application.utils.database_connection import establish_connection
+import os
+import rasterio
+
+
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -20,6 +26,7 @@ class PushToDashPage(QWidget):
         self.conn = establish_connection()
         self.init_ui()
         self.load_data()
+        self.qc_folder_paths =[] # used to run the  push to s3 script
 
     def init_ui(self):
         self.setStyleSheet("""
@@ -145,11 +152,13 @@ class PushToDashPage(QWidget):
         try:
             result = self.conn.execute(text("SELECT * FROM topo_qc.data_ready_for_dash"))
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
-            df = df[["survey_id", "survey_unit", "survey_type", "completion_date", "batch_sent"]]
+            df = df[["survey_id", "survey_unit", "survey_type", "completion_date", "batch_sent","qc_folder"]]
         except Exception as e:
             logging.error(f"Failed to load data: {e}")
             QMessageBox.critical(self, "Error", "Failed to load data.")
             return
+
+        self.qc_folder_paths = df['qc_folder'].tolist()
 
         self.table.setRowCount(len(df))
         self.table.setColumnCount(len(df.columns))
@@ -184,8 +193,37 @@ class PushToDashPage(QWidget):
         try:
             QApplication.processEvents()  # ensures dialog is shown immediately
 
+
+
+            s3_uploader = UploadToS3(qc_folder_paths=self.qc_folder_paths)
+            s3_upload_results  = s3_uploader.run_upload()
+
+            # --- Warn user if upload failures occurred ---
+            if s3_upload_results:  # dict is not empty
+                errors = "\n".join([f"{k}: {v}" for k, v in s3_upload_results.items()])
+                warn_msg = (
+                    "Some files failed to upload to S3:\n\n"
+                    f"{errors}\n\n"
+                    "Do you still want to continue pushing data to dash?"
+                )
+
+                choice = QMessageBox.warning(
+                    self,
+                    "S3 Upload Issues",
+                    warn_msg,
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+
+                if choice != QMessageBox.Yes:
+                    progress.close()
+                    return
+
+
+
             f = MigrateStagingToLive()
             f.migrate_data()
+
 
             QMessageBox.information(self, "Success", "Data successfully pushed to dash.")
             self.load_data()

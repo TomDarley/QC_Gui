@@ -6,6 +6,11 @@ from qc_application.gui.styles import get_app_stylesheet
 #from qc_application.config.settings import LOG_LEVEL
 from qc_application.config.app_settings import AppSettings
 
+#TODO - Note survey_unit = '6d6D1-3' and profile in ('6d00282','6d00290','6d00286' ) is updated to 6d6D1-4 for the
+#TODO - Dash and should be reflected in the QC tool too.
+
+
+
 settings = AppSettings()
 LOG_LEVEL = settings.get("log_level")
 
