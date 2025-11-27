@@ -1,13 +1,18 @@
 import shutil
-from datetime import datetime
-from itertools import chain
-
+import logging
 #from qc_application.config.settings import ARCGIS_TEMPLATE_PATH
-from qc_application.config.app_settings import AppSettings
+
+try:
+    from qc_application.config.app_settings import AppSettings
+except ImportError as e:
+    logging.error(f"Failed to import TopoQCTool: {str(e)}")
+
+
 
 settings = AppSettings()
 ARCGIS_TEMPLATE_PATH = settings.get("arcgis_template_path")
 ARCGIS_PRO_PATH = settings.get("arcgis_pro_path")
+
 
 try:
     import arcpy
@@ -15,22 +20,23 @@ try:
 except RuntimeError as re:
     raise ImportError("ArcPy could not be imported. Ensure that ArcGIS Pro is installed and the Python environment is correctly set up.") from re
 
-import os
-import pandas as pd
-import re
-import math
 import sys
 import logging
-from pathlib import Path
 
-from dependencies import mlsw_dict
-from dependencies.system_paths import OS_TILES_PATH
-from qc_application.utils.name_check_helper_functions import check_data_labeling
+
 
 import subprocess
 import tempfile
-from qc_application.utils.main_qc_tool_helper_functions import  *
-from dependencies import system_paths
+
+
+try:
+    from qc_application.utils.main_qc_tool_helper_functions import  *
+    from qc_application.dependencies import mlsw_dict
+    from qc_application.dependencies.system_paths import OS_TILES_PATH
+except ImportError as e:
+    raise ImportError("Helper functions could not be imported. Ensure that the utils module is accessible.") from e
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -133,7 +139,7 @@ class TopoQCTool:
                     logging.error(f"Standardised text file data could not be created from {input_text}. Skipping this file.")
                     break
 
-                MLSW = get_mlsw(extracted_survey_unit, extracted_cell,mlsw_dict.mlsw_dict)
+                MLSW = get_mlsw(extracted_survey_unit, extracted_cell, mlsw_dict.mlsw_dict)
 
                 points_file_name = create_point_file_name(extracted_cell, file_friendly_survey_unit, survey_completion_date)
 

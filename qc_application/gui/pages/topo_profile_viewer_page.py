@@ -176,11 +176,6 @@ class DataHandler:
         self.flagged_reasons = {} # Store reasons and profile profiles
         self.flagged_profiles = False # Flag to indicate if any profiles were flagged during the session
 
-
-
-
-
-
         # Ensure directories exist
         for folder in [ 'Flagged_Profiles',
                        'Last_Session_Log']:

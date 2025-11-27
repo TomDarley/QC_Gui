@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QPushButton, QWidget, QListWidget, QHBoxLayout, QMessageBox, \
     QFileDialog, QListWidgetItem, QFrame, QGroupBox
 
-from dependencies.system_paths import INTERIM_SURVEY_PATHS
+from qc_application.dependencies.system_paths import INTERIM_SURVEY_PATHS
 from qc_application.utils.query_database import query_database
 from qc_application.workers.script_runner import ScriptRunner
 from datetime import datetime
