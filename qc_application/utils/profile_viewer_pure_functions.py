@@ -23,29 +23,23 @@ def qc_profile(master_df, survey_df):
     max_master_chainage = master['chainage'].max()
     max_survey_chainage = survey['chainage'].max()
 
-
+    # FIX: Simplified landward check
     landward_section = survey[survey['chainage'] <= min_cutoff_chainage]
-    if not landward_section.empty:
-        if landward_section['chainage'].min() > min_cutoff_chainage:
-            flags.append("Survey does not reach master profile landward limit")
-    else:
+    if landward_section.empty:
         flags.append("Survey does not reach master profile landward limit")
 
-
-    # Check chainage order is increases for each point
+    # Check chainage order increases for each point
     survey_raw_chainage = survey_df['chainage']
     sorted_survey_chainage = survey_df['chainage'].sort_values().reset_index(drop=True)
     survey_raw_chainage_reset = survey_raw_chainage.reset_index(drop=True)
     if not survey_raw_chainage_reset.equals(sorted_survey_chainage):
         flags.append("Survey chainage values are not strictly increasing")
 
-
     # --- Check 4: Seaward section stays above MLSW ---
     seaward_section = survey[survey['chainage'] >= cutoff_chainage]
     if not seaward_section.empty:
         if seaward_section['elevation'].min() > mlsw and "Profile does not reach MLW elevation" not in flags:
             flags.append("Survey elevation does not meet depth at seaward end")
-
 
     # --- Check 3: Count crossings between master and survey ---
     def orientation(p, q, r):
@@ -84,15 +78,9 @@ def qc_profile(master_df, survey_df):
     if crossings == 0:
         flags.clear()
         flags.append(f"Survey does not cross master profile anywhere!")
-
-    elif crossings > 2 and not "Survey chainage values are not strictly increasing" in flags:
+    elif crossings > 2 and "Survey chainage values are not strictly increasing" not in flags:
         flags.append(f"Survey crosses master profile {crossings} times (expected ≤2)")
-
-    elif crossings == 1 and not  "Profile does not reach MLW elevation" in flags:
-
-        flags.append(f"Survey does not reach master profile landward limit")
-    else:
-        pass
+    # REMOVED: The flawed "elif crossings == 1" check
 
     diagnostics = {
         "mlsw": mlsw,

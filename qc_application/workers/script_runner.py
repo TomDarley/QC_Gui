@@ -24,7 +24,12 @@ class ScriptRunner(QThread):
             temp_dir = tempfile.mkdtemp(prefix="qcapp_")
 
             # PyInstaller unpack location OR project root
-            meipass = getattr(sys, "_MEIPASS", os.getcwd())
+
+            if hasattr(sys, "_MEIPASS"):
+                meipass = sys._MEIPASS
+            else:
+                # Go **two levels up** from workers/ to reach QC_Gui
+                meipass = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
             # Copy the entire qc_application folder
             src = os.path.join(meipass, "qc_application")

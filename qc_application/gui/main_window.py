@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget
 
 # Import your pages (update paths as you move them into gui/)
 from qc_application.gui.pages.home_page import HomePage
+from qc_application.gui.pages.profile_editor_page import ProfileEditorPage
 from qc_application.gui.pages.settings_page import SettingsDialog
 from qc_application.gui.pages.topo_qc_page import QCPage
 from qc_application.gui.pages.topo_issue_reviewer_page import IssueReviewerPage
@@ -31,6 +32,7 @@ class MainWindow(QWidget):
         self.batch_tool_page = BatcherPage(self.show_topo_qc_page)
         self.topo_qc_admin_page = TopoAdminPage(self.show_topo_qc_page)
         self.push_to_dash_page = PushToDashPage(self.show_topo_qc_page)
+        self.profile_editor_page = ProfileEditorPage(self.show_topo_qc_page)
 
         # TopoQCPage controls navigation
         self.topo_qc_page = TopoQCMenuPage(
@@ -42,7 +44,8 @@ class MainWindow(QWidget):
             self.show_batch_tool_page,
             self.open_settings,
             self.show_topo_qc_admin_page,
-            self.show_push_to_dash_page
+            self.show_push_to_dash_page,
+            self.show_profile_editor_page
 
         )
 
@@ -56,8 +59,9 @@ class MainWindow(QWidget):
         self.stack.addWidget(self.batch_tool_page)
         self.stack.addWidget(self.topo_qc_admin_page)
         self.stack.addWidget(self.push_to_dash_page)
-
+        self.stack.addWidget(self.profile_editor_page)
         self.stack.setCurrentWidget(self.home_page)
+
 
         layout = QVBoxLayout()
         layout.addWidget(self.stack)
@@ -74,6 +78,7 @@ class MainWindow(QWidget):
     def show_topo_qc_admin_page(self): self.stack.setCurrentWidget(self.topo_qc_admin_page)
     def show_push_to_dash_page(self): self.stack.setCurrentWidget(self.push_to_dash_page)
 
+    def show_profile_editor_page(self): self.stack.setCurrentWidget(self.profile_editor_page)
 
 
     def open_settings(self):

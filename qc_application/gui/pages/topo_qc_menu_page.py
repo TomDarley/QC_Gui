@@ -15,6 +15,7 @@ class TopoQCMenuPage(QWidget):
         open_settings_callback,
         switch_to_topo_qc_admin,
         switch_to_push_to_dash,
+        switch_to_profile_editor,
     ):
         super().__init__()
 
@@ -111,6 +112,27 @@ class TopoQCMenuPage(QWidget):
         admin_layout.addWidget(admin_button)
         admin_section.setLayout(admin_layout)
         main_layout.addWidget(admin_section)
+
+        profile_editor_button = QPushButton("7) Profile Editor")
+        profile_editor_button.clicked.connect(switch_to_profile_editor)
+        profile_editor_button.setFixedHeight(50)
+        profile_editor_button.setStyleSheet("""
+            QPushButton {
+                background-color: #8E44AD;
+                border: 1px solid #7D3C98;
+                color: white;
+                font-weight: 500;
+                font-size: 15px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #6C3483;
+            }
+        """)
+
+        data_layout.addWidget(profile_editor_button)
+
+
 
         main_layout.addStretch()
         self.setLayout(main_layout)

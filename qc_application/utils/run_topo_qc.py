@@ -6,6 +6,7 @@ try:
     from qc_application.services.topo_qc_service import TopoQCTool
 except ImportError as e:
     logging.error(f"Failed to import TopoQCTool: {str(e)}")
+    raise
 
 
 def run_qc(input_text_files, interim_survey_lines):

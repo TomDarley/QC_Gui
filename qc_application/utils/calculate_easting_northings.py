@@ -94,7 +94,7 @@ def calculate_missing_northing_easting(df, date, survey_unit):
                 df.loc[i, 'survey_unit'] = no_na_survey_unit
                 df.loc[i, 'month'] = no_na_df_month
                 df.loc[i, 'year'] = no_na_df_year
-                df.loc[i, 'profile'] = "" # override nan value in profile
+                df.loc[i, 'profile'] = no_na_df_profile # override nan value in profile
 
         def process_tail(non_null_northings, non_null_eastings, number_of_nans: list):
 
@@ -127,24 +127,7 @@ def calculate_missing_northing_easting(df, date, survey_unit):
 
             print(df.dtypes)
 
-            # Calculate the missing northing and easting values using the slopes
-            for i in generated_row_list:  # For the two missing rows
-                chainage = df.loc[i, 'chainage']
 
-                northing_cal = round(northing_1 + slope_northing * (chainage - chainage_1), 3)
-                df.loc[i, 'northing'] = northing_cal
-
-                easting_cal = round(easting_1 + slope_easting * (chainage - chainage_1), 3)
-                df.loc[i, 'easting'] = easting_cal
-
-                # Additionally fill in the other missing values
-                df.loc[i, 'fc'] = "ZZ"
-                df.loc[i, 'reg_id'] = no_na_df_profile
-                df.loc[i, 'date'] = no_na_df_date
-                df.loc[i, 'survey_unit'] = no_na_survey_unit
-                df.loc[i, 'month'] = no_na_df_month
-                df.loc[i, 'year'] = no_na_df_year
-                df.loc[i, 'profile'] = ""  # override nan value in profile
 
             # Calculate the missing northing and easting values using the slopes
             for i in reverse_index_list:  # For the two missing rows
@@ -163,7 +146,10 @@ def calculate_missing_northing_easting(df, date, survey_unit):
                 df.loc[i, 'survey_unit'] = no_na_survey_unit
                 df.loc[i, 'month'] = no_na_df_month
                 df.loc[i, 'year'] = no_na_df_year
-                df.loc[i, 'profile'] = ""  # override nan value in profile
+                df.loc[i, 'profile'] = no_na_df_profile
+
+            print(df)# override nan value in profile
+
 
         if status == "Both":
 

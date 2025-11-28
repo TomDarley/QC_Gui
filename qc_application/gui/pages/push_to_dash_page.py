@@ -226,6 +226,8 @@ class PushToDashPage(QWidget):
 
 
             QMessageBox.information(self, "Success", "Data successfully pushed to dash.")
+
+
             self.load_data()
 
         except Exception as e:

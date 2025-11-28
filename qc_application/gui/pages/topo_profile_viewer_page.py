@@ -14,6 +14,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy import text
+from qc_application.services.topo_qc_migrate_staging_data import MigrateStagingToLive
 
 # PyQt Imports
 from PyQt5.QtWidgets import (
@@ -101,8 +102,12 @@ def extract_profiles(df):
     return unique_profiles
 
 
-def extract_date(path):
+def extract_date(path, mode):
     """Extract date from the file path."""
+    if mode == 'edit':
+        date_obj = path['date'].iloc[0]
+        return date_obj
+
     base_name = os.path.basename(path)
     match = re.search(r'(?<!\d)(\d{8})(?!\d)', base_name)
     if match:
@@ -130,10 +135,11 @@ class DataHandler:
     """Handles all data manipulation, file I/O, and database interactions."""
     LAST_SESSION_LOG = os.path.join(script_dir, 'Last_Session_Log', 'log.pkl')
 
-    def __init__(self, new_survey_topo_data, survey_unit):
+    def __init__(self, new_survey_topo_data, survey_unit, mode='qc'):
         logging.info(f"Initializing DataHandler for unit: {survey_unit}")
 
         logging.info(f"Checking if Survey Unit '{survey_unit}' has already been pushed to the database.")
+        self.mode = mode
 
         # Data Loading
         try:
@@ -154,7 +160,8 @@ class DataHandler:
         # State Variables
         self.unique_profiles = extract_profiles(self.new_survey_topo_data)
         self.survey_unit = survey_unit
-        self.date = extract_date(new_survey_topo_data)
+
+        self.date = extract_date(new_survey_topo_data, mode = self.mode)
         self.current_index = 0
         self.profile = None
         self.profile_data = None
@@ -518,6 +525,14 @@ class DataHandler:
 
             profile_data_with_points = pd.concat([self.profile_data.copy(), new_points], ignore_index=True)
             profile_data_with_points = profile_data_with_points.sort_values('chainage')
+            profile_data_with_points = (
+                profile_data_with_points
+                .sort_values('chainage')
+                .drop_duplicates(subset='chainage', keep='first')
+                .reset_index(drop=True)
+            )
+
+
 
             # Need to add easting and northing and zz
 
@@ -530,9 +545,6 @@ class DataHandler:
             self.added_points_x.clear()
             self.added_points_y.clear()
             logging.info('New points merged and internal data updated.')
-
-
-
 
 
 
@@ -792,8 +804,6 @@ class DataHandler:
                 elif 'New_Profile_Data' in directory:
                    self.updateTopoDatabase(conn, file_paths)
 
-
-
             finally:
                 conn.close()
 
@@ -811,8 +821,40 @@ class DataHandler:
             logging.error("Push aborted due to failed DB connection.")
             return
 
+        if self.mode != 'edit':
+            self.updateQClogDatabase(conn)
+        else:
+            # ! IMPORTANT - In edit mode we DO NOT update the QC log but instead push to live tables !
 
-        self.updateQClogDatabase(conn)
+            logging.info("Edit mode detected; pushing to live tables.")
+
+            edit_mode_taget  = (self.unique_profiles['reg_id'].to_list(), self.date)
+
+            try:
+                f = MigrateStagingToLive(edit_mode= 'edit', edit_mode_target = edit_mode_taget)
+                result = f.migrate_data()
+
+                if not result:
+                    logging.error("Failed to migrate data in edit mode.")
+                    QMessageBox.critical(
+                        None,
+                        "Failed to migrate data in edit mode",
+                        QMessageBox.Ok
+                    )
+
+
+
+            except Exception as e:
+                logging.error(f"Failed to migrate data in edit mode: {e}")
+                QMessageBox.critical(
+                    None,
+                    "Failed to migrate data in edit mode",
+                    QMessageBox.Ok
+                )
+
+
+
+
 
         # 4) Reload after a short delay
         QTimer.singleShot(300, lambda: self._reload_after_cleanup())
@@ -920,7 +962,9 @@ class DataHandler:
             self.undoMpDatabase(conn)
             self.undoCpaDatabase(conn)
             self.undoTopoDatabase(conn)
-            self.undoQcLogFlags(conn)
+
+            if self.mode != 'edit':
+                self.undoQcLogFlags(conn)
 
 
         finally:
@@ -1255,19 +1299,6 @@ class DataHandler:
                 delete_query = text("DELETE FROM staging_data.master_profiles WHERE profile_id = ANY(:ids)")
                 conn.execute(delete_query, {"ids": profile_ids})
 
-                # **FIX: Include sequence column in restore**
-                insert_from_history = text("""
-                    INSERT INTO staging_data.master_profiles (profile_id, date, chainage, elevation, sequence)
-                    SELECT profile_id, date, chainage, elevation, sequence
-                    FROM staging_data.master_profiles_history
-                    WHERE profile_id = ANY(:ids)
-                    AND changed_at = :last_change
-                    AND user_name = :user_name
-                    ORDER BY sequence ASC
-                """)
-                conn.execute(insert_from_history,
-                             {"ids": profile_ids, "last_change": last_change, "user_name": user_name})
-
                 # Optional: clean up the restored history entries
                 conn.execute(
                     text("""
@@ -1342,18 +1373,6 @@ class DataHandler:
                         {"su": survey_unit, "dt": date}
                     )
 
-                    # Restore from history
-                    conn.execute(
-                        text("""
-                            INSERT INTO staging_data.cpa_table (survey_unit, date, profile, area)
-                            SELECT survey_unit, date, profile, area
-                            FROM staging_data.cpa_table_history
-                            WHERE survey_unit = :su AND date = :dt
-                            AND changed_at = :last_change
-                            AND user_name = :user_name
-                        """),
-                        {"su": survey_unit, "dt": date, "last_change": last_change, "user_name": user_name}
-                    )
 
                     # Optional cleanup of restored entries
                     conn.execute(
@@ -1421,20 +1440,6 @@ class DataHandler:
                         WHERE survey_unit = :su AND date = :dt
                     """), {"su": survey_unit, "dt": date})
 
-                    # Restore from history
-                    conn.execute(text("""
-                        INSERT INTO staging_data.topo_data (
-                            easting, northing, elevation_od, chainage, fc,
-                            profile, reg_id, survey_unit, date, year, month
-                        )
-                        SELECT easting, northing, elevation_od, chainage, fc,
-                               profile, reg_id, survey_unit, date, year, month
-                        FROM staging_data.topo_data_history
-                        WHERE survey_unit = :su AND date = :dt
-                          AND changed_at = :last_change
-                          AND user_name = :user_name
-                    """), {"su": survey_unit, "dt": date,
-                           "last_change": last_change, "user_name": user_name})
 
                     # Optional cleanup
                     conn.execute(text("""
@@ -1661,14 +1666,14 @@ class ProfileQCApp(QWidget):
     """The main PyQt GUI for the Profile QC Tool."""
     session_ended = pyqtSignal()
 
-    def __init__(self, new_survey_topo_data, survey_unit,survey_type ,parent =None):
+    def __init__(self, new_survey_topo_data, survey_unit,survey_type, mode = 'qc' ,parent =None, ):
         super().__init__(parent)
-
+        self.mode = mode
         self.dialog = parent
 
         logging.info("Initializing ProfileQCApp GUI.")
         self.setWindowTitle(f"Profile QC Tool - {survey_unit}")
-        self.data_handler = DataHandler(new_survey_topo_data, survey_unit)
+        self.data_handler = DataHandler(new_survey_topo_data, survey_unit, mode = self.mode)
         self.survey_type = survey_type
 
         if self.data_handler.has_survey_been_marked_as_failed():
@@ -1701,14 +1706,12 @@ class ProfileQCApp(QWidget):
         self.connect_signals()
         self.initial_load()
 
+
     def initial_load(self):
         """Loads and plots the very first profile (index 0) explicitly."""
 
         # 1. Reset index to 0 (just for safety)
         self.data_handler.current_index = 0
-
-
-
 
 
         self.temp_files_already_exist = self.data_handler.check_temp_files_exist()
@@ -1837,11 +1840,14 @@ class ProfileQCApp(QWidget):
         self.btn_save = self._create_button("💾 Apply Changes (Enter)", self.save_and_update)
         self.btn_save.setObjectName("SaveButton")
 
+
         self.btn_delete = self._create_button("❌ Delete Changes (Del)", self.delete_and_update)
+        add_group(self.btn_save, self.btn_delete)
 
-
-        self.btn_flag = self._create_button("🚩 Flag Profile (I)", self.flag_profile)
-        add_group(self.btn_save, self.btn_delete, self.btn_flag)
+        # disable flagging in edit mode as we are not changing the qc log
+        if self.mode != 'edit':
+            self.btn_flag = self._create_button("🚩 Flag Profile (I)", self.flag_profile)
+            add_group(self.btn_flag)
 
         # --- Session Controls ---
         self.btn_add_more = self._create_button("➕ Add DB Profiles (M)", self.add_more_profiles)
@@ -2073,10 +2079,27 @@ class ProfileQCApp(QWidget):
             logging.info("Push aborted: Data has already been pushed to the database.")
             return
 
+        # --- Confirm edit mode if applicable ---
+        if self.mode == 'edit':
+            edit_confirm = QMessageBox.question(
+                self,
+                "You are in Profile Edit Mode!",
+                "⚠️ Editing in profile edit mode directly modifies the live tables.\n\n"
+                "This cannot be undone and changes to the MP will result in recalculation of CPA for all affected profiles.\n\n"
+                "Are you absolutely sure you want to save these edits?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if edit_confirm != QMessageBox.Yes:
+                return  # user chose No, abort
+
+        # --- Confirm flagged profiles ---
         if self.data_handler.flagged_profiles:
-          confirm = QMessageBox.warning(self, "Flagged Profiles",
-                                "One or more profiles have been flagged. Pushing will set pass the selected fail reason to Admin for review.\n\n",
-                                        QMessageBox.Yes | QMessageBox.No)
+            confirm = QMessageBox.warning(
+                self,
+                "Flagged Profiles",
+                "One or more profiles have been flagged. Pushing will pass the selected fail reason to Admin for review.\n\n",
+                QMessageBox.Yes | QMessageBox.No
+            )
         else:
             confirm = QMessageBox.question(
                 self,
@@ -2090,24 +2113,27 @@ class ProfileQCApp(QWidget):
                 if self.data_handler.flagged_profiles:
                     self.data_handler.mark_survey_as_rejected()
                 else:
-
-
-
                     self.data_handler.end_session_and_push()
-                    #self.data_handler.prepare_sands_ready_files()
+                    # self.data_handler.prepare_sands_ready_files()
 
             except Exception as e:
                 logging.error(f"Error pushing data files: {e}")
-                QMessageBox.warning(self, "Error",
-                                    f"An error occurred while creating Sands Ready files:\n{e}")
-
-
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"An error occurred while creating Sands Ready files:\n{e}"
+                )
                 return
+
+            # --- Show success message ---
+            QMessageBox.information(
+                self,
+                "Push Successful",
+                "✅ All profiles have been successfully finalized and pushed to the database."
+            )
 
             self.update_plot()
             self.delete_and_update()
-
-
             self.end_session()
 
 
