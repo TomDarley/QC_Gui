@@ -28,8 +28,6 @@ class SurveyChecker:
             return not self.is_valid_date(value)
         return value is None or str(value).strip() == ""
 
-    from sqlalchemy import text
-    import logging
 
     def check_survey_complete(self, survey_type, index):
         """Check whether a survey record is complete in the QC log."""

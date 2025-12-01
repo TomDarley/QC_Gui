@@ -125,7 +125,7 @@ def calculate_missing_northing_easting(df, date, survey_unit):
             slope_northing = delta_northing / delta_chainage
             slope_easting = delta_easting / delta_chainage
 
-            print(df.dtypes)
+
 
 
 
@@ -148,7 +148,7 @@ def calculate_missing_northing_easting(df, date, survey_unit):
                 df.loc[i, 'year'] = no_na_df_year
                 df.loc[i, 'profile'] = no_na_df_profile
 
-            print(df)# override nan value in profile
+
 
 
         if status == "Both":
@@ -160,7 +160,7 @@ def calculate_missing_northing_easting(df, date, survey_unit):
             process_head(non_null_northings, non_null_eastings, nan_count)
         elif status == 'Tail':
             process_tail(non_null_northings, non_null_eastings, nan_count)
-    print(df)
+
 
     df1 = df.copy()
 

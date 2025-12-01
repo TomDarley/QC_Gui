@@ -17,10 +17,10 @@ def get_available_survey_units_and_profiles():
     df = pd.DataFrame(result.fetchall(), columns=result.keys())
 
     conn.close()
-    print(df)
+
     return df
 
-#get_available_survey_units_and_profiles()
+
 
 
 
@@ -42,7 +42,6 @@ def get_existing_topo_data(survey_unit, date):
     df = pd.DataFrame(result.fetchall(), columns=result.keys())
 
     conn.close()
-    print(df)
+
     return df
 
-#get_existing_topo_data(survey_unit="6aSU10", date="2020-06-25")
